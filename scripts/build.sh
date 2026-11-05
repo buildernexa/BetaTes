@@ -43,6 +43,16 @@ TMO=$(jq -r '.meta.options.timeoutMin // 120' "$META")
 
 [ -f "$WORK_DIR/env.sh" ] && . "$WORK_DIR/env.sh"
 
+# AUTO-GENERATE KEYSTORE JIKA RELEASE & TIDAK ADA FILE
+if [ "$TYPE" = "release" ] && [ -z "${KS_FILE:-}" ]; then
+  say "[keystore] Membuat keystore otomatis untuk build release..."
+  keytool -genkey -v -keystore "$WORK_DIR/autogen.jks" -alias autogen -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+  export KS_FILE="$WORK_DIR/autogen.jks"
+  export KS_ALIAS="autogen"
+  export KS_STORE_PASS="android"
+  export KS_KEY_PASS="android"
+fi
+
 TMO_SEC=$((TMO * 60))
 run_to() { timeout --signal=TERM --kill-after=30 "$TMO_SEC" "$@" 2>&1 | tee -a "$LOG"; return "${PIPESTATUS[0]}"; }
 
@@ -52,58 +62,48 @@ CACHE_ARGS=()
 PROJ="$WORK_DIR/project"
 cd "$PROJ"
 
+# PAKSA ARSITEKTUR AGAR BISA DI-INSTALL
+export ORG_GRADLE_PROJECT_android_injected_build_abi="arm64-v8a,armeabi-v7a"
+
 case "$FW" in
   Flutter)
-    say "[deps] flutter pub get"
     run_to flutter pub get || fail "flutter pub get"
     upload_phase
-    ;;
-
-  "React Native"|"Capacitor / Ionic"|"Cordova")
-    say "[deps] npm install"
-    if [ -f package-lock.json ]; then run_to npm ci --no-audit --no-fund || fail "npm ci"
-    else run_to npm install --no-audit --no-fund || fail "npm install"; fi
-    upload_phase
-
-    if [ "$FW" = "Capacitor / Ionic" ]; then
-      say "[deps] npx cap sync android"
-      run_to npx --yes cap sync android || fail "cap sync"
-      cd android
-    elif [ "$FW" = "Cordova" ]; then
-      say "[deps] cordova prepare android"
-      run_to npx --yes cordova prepare android || fail "cordova prepare"
-      cd platforms/android
-    else
-      cd android
-    fi
-    upload_phase
-    ;;
-esac
-
-case "$FW" in
-  Flutter)
     if [ "$FMT" = "aab" ]; then
-      say "[build] flutter build appbundle --release"
       run_to flutter build appbundle --release || fail "appbundle"
     elif [ "$TYPE" = "release" ]; then
-      say "[build] flutter build apk --release"
       run_to flutter build apk --release || fail "apk release"
     else
-      say "[build] flutter build apk --debug"
       run_to flutter build apk --debug || fail "apk debug"
     fi
     ;;
-  *)
-    G=./gradlew
-    [ -x "$G" ] || G=gradle
-    [ "$CLEAN" = "true" ] && { say "[build] clean"; run_to "$G" clean --no-daemon || true; }
-    TASK="assembleDebug"
-    [ "$TYPE" = "release" ] && TASK="assembleRelease"
+
+  "React Native"|"Capacitor / Ionic"|"Cordova")
+    if [ -f package-lock.json ]; then run_to npm ci --no-audit --no-fund || fail "npm ci"
+    else run_to npm install --no-audit --no-fund || fail "npm install"; fi
+    upload_phase
+    if [ "$FW" = "Capacitor / Ionic" ]; then run_to npx --yes cap sync android || fail "cap sync"; cd android
+    elif [ "$FW" = "Cordova" ]; then run_to npx --yes cordova prepare android || fail "cordova prepare"; cd platforms/android
+    else cd android; fi
+
+    G=./gradlew; [ -x "$G" ] || G=gradle
+    [ "$CLEAN" = "true" ] && run_to "$G" clean --no-daemon || true
+    TASK="assembleDebug"; [ "$TYPE" = "release" ] && TASK="assembleRelease"
     [ "$FMT" = "aab" ] && { [ "$TYPE" = "release" ] && TASK="bundleRelease" || TASK="bundleDebug"; }
-    ARGS=(--no-daemon --stacktrace --console=plain -Dorg.gradle.workers.max=2)
+    ARGS=(--no-daemon --stacktrace --console=plain)
     [ "$OFFLINE" = "true" ] && ARGS+=(--offline)
     ARGS+=("${CACHE_ARGS[@]}")
-    say "[build] $G $TASK ${ARGS[*]} $GARGS"
+    run_to "$G" "$TASK" "${ARGS[@]}" $GARGS || fail "gradle $TASK"
+    ;;
+
+  *)
+    G=./gradlew; [ -x "$G" ] || G=gradle
+    [ "$CLEAN" = "true" ] && run_to "$G" clean --no-daemon || true
+    TASK="assembleDebug"; [ "$TYPE" = "release" ] && TASK="assembleRelease"
+    [ "$FMT" = "aab" ] && { [ "$TYPE" = "release" ] && TASK="bundleRelease" || TASK="bundleDebug"; }
+    ARGS=(--no-daemon --stacktrace --console=plain)
+    [ "$OFFLINE" = "true" ] && ARGS+=(--offline)
+    ARGS+=("${CACHE_ARGS[@]}")
     run_to "$G" "$TASK" "${ARGS[@]}" $GARGS || fail "gradle $TASK"
     ;;
 esac
@@ -128,7 +128,6 @@ find "$PROJ" -type f -name 'mapping.txt' -print0 2>/dev/null \
   | while IFS= read -r -d '' f; do cp -v "$f" "$OUT/mapping.txt" | tee -a "$LOG"; done
 
 cp -f "$LOG" "$OUT/build.log" 2>/dev/null || true
-
 COUNT=$(find "$OUT" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' \) | wc -l)
 [ "$COUNT" -gt 0 ] || fail "tidak ada APK/AAB di outputs"
 upload_phase
@@ -136,8 +135,7 @@ upload_phase
 say "[upload] mengunggah $COUNT paket ke release build-$BUILD_ID"
 n=0
 while IFS= read -r -d '' f; do
-  n=$((n + 1))
-  ext="${f##*.}"
+  n=$((n + 1)); ext="${f##*.}"
   if [ "$n" -eq 1 ]; then name="app.$ext"; else name="app-$n.$ext"; fi
   gh release upload "build-$BUILD_ID" "$f#$name" --clobber --repo "$REPO"
 done < <(find "$OUT" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' \) -print0)
