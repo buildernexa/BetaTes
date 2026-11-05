@@ -2,9 +2,7 @@
 (function () {
   'use strict';
 
-  window.addEventListener('error', function(e) {
-    alert('Sistem Error: ' + e.message);
-  });
+  window.addEventListener('error', function(e) { alert('Sistem Error: ' + e.message); });
 
   const qs = (s) => document.querySelector(s);
   const qsa = (s) => [...document.querySelectorAll(s)];
@@ -13,18 +11,13 @@
   const fetchWithTimeout = (url, options = {}, timeout = 60000) => {
     return Promise.race([
       fetch(url, options),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Jaringan Timeout: GitHub tidak merespons')), timeout))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Jaringan Timeout')), timeout))
     ]);
   };
 
   const stor = {
-    get(k) {
-      try { return sessionStorage.getItem(k) || localStorage.getItem(k) || ''; } catch (_) { return ''; }
-    },
-    set(k, v) {
-      try { localStorage.setItem(k, v); } catch (_) {}
-      try { sessionStorage.setItem(k, v); } catch (_) {}
-    },
+    get(k) { try { return sessionStorage.getItem(k) || localStorage.getItem(k) || ''; } catch (_) { return ''; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} try { sessionStorage.setItem(k, v); } catch (_) {} },
   };
 
   let CREDS = {
@@ -41,28 +34,22 @@
   }
 
   const GH = 'https://api.github.com';
+  const repoBase = () => `/repos/${CREDS.owner}/${CREDS.repo}`;
+  const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-  // Fungsi Fetch dengan Auto-Retry (Mengatasi koneksi HP yang tidak stabil)
   const ghFetch = async (path, opts = {}, retries = 3) => {
     if (!CREDS.pat) throw new Error('PAT kosong');
     for (let i = 0; i < retries; i++) {
       try {
         const r = await fetchWithTimeout(GH + path, {
           ...opts,
-          headers: {
-            Authorization: `Bearer ${CREDS.pat}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-            ...(opts.headers || {}),
-          },
+          headers: { Authorization: `Bearer ${CREDS.pat}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opts.headers || {}) },
         }, 60000); 
         if (!r.ok) {
           const body = await r.text().catch(() => '');
           let msg = `GitHub ${r.status}`;
-          try { const j = JSON.parse(body); if (j.message) msg += `: ${j.message}`; }
-          catch (_) { msg += `: ${body.slice(0, 160)}`; }
-          const e = new Error(msg);
-          e.status = r.status;
+          try { const j = JSON.parse(body); if (j.message) msg += `: ${j.message}`; } catch (_) {}
+          const e = new Error(msg); e.status = r.status;
           if (r.status >= 500) { await new Promise(res => setTimeout(res, 2000 * (i + 1))); continue; }
           throw e;
         }
@@ -74,79 +61,46 @@
     }
   };
 
-  const repoBase = () => `/repos/${CREDS.owner}/${CREDS.repo}`;
-  const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      const base64 = dataUrl.split(',')[1];
-      resolve(base64);
-    };
+    reader.onload = () => resolve(reader.result.split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 
   const ensureCredsModal = () => {
-    if (document.getElementById('ghCredsModal')) {
-      const d = document.getElementById('ghCredsModal');
-      d.querySelector('#ghOwner').value = CREDS.owner || '';
-      d.querySelector('#ghRepo').value = CREDS.repo || 'apk-runner';
-      d.querySelector('#ghPat').value = CREDS.pat || '';
-      d.hidden = false;
-      return;
-    }
+    if (document.getElementById('ghCredsModal')) { document.getElementById('ghCredsModal').hidden = false; return; }
     const d = document.createElement('div');
-    d.id = 'ghCredsModal';
-    d.className = 'modal';
+    d.id = 'ghCredsModal'; d.className = 'modal';
     d.innerHTML = `
       <div class="card" style="width:min(92vw,480px);margin:0">
         <div class="ct">Kredensial GitHub</div>
-        <p class="hint" style="margin:0 0 14px">PAT disimpan di localStorage peramban ini. Buat fine-grained PAT dengan scope <b>Contents: RW</b>, <b>Actions: RW</b>, <b>Workflows: RW</b> pada repo runner.</p>
-        <div class="fl"><input id="ghOwner" placeholder=" " autocomplete="off"><label for="ghOwner">Owner (username GitHub)</label></div>
-        <div class="fl"><input id="ghRepo" placeholder=" " autocomplete="off"><label for="ghRepo">Repo runner</label></div>
-        <div class="fl"><input id="ghPat" type="password" placeholder=" " autocomplete="off"><label for="ghPat">Personal Access Token</label></div>
-        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button type="button" class="btn lime" id="ghSave">Simpan</button>
-          <button type="button" class="btn alt" id="ghCancel">Batal</button>
-          <a class="btn alt mini" href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none">Buat PAT</a>
-        </div>
+        <p class="hint" style="margin:0 0 14px">Buat fine-grained PAT dengan scope <b>Contents: RW</b>, <b>Actions: RW</b>, <b>Workflows: RW</b>.</p>
+        <div class="fl"><input id="ghOwner" placeholder=" " autocomplete="off"><label for="ghOwner">Owner</label></div>
+        <div class="fl"><input id="ghRepo" placeholder=" " autocomplete="off"><label for="ghRepo">Repo</label></div>
+        <div class="fl"><input id="ghPat" type="password" placeholder=" " autocomplete="off"><label for="ghPat">PAT</label></div>
+        <div style="display:flex;gap:10px;margin-top:18px;"><button type="button" class="btn lime" id="ghSave">Simpan</button><button type="button" class="btn alt" id="ghCancel">Batal</button></div>
       </div>`;
     document.body.appendChild(d);
     d.querySelector('#ghSave').onclick = () => {
-      const o = d.querySelector('#ghOwner').value.trim();
-      const r = d.querySelector('#ghRepo').value.trim();
-      const p = d.querySelector('#ghPat').value.trim();
-      if (!o || !r || !p) { if (typeof toast === 'function') toast('Isi ketiganya'); else alert('Isi ketiganya'); return; }
-      CREDS = { owner: o, repo: r, pat: p };
-      stor.set('gh_owner', o);
-      stor.set('gh_repo', r);
-      stor.set('gh_pat', p);
-      d.hidden = true;
-      updateConn();
-      if (typeof renderAll === 'function') renderAll();
-      pollOnce();
+      CREDS = { owner: d.querySelector('#ghOwner').value.trim(), repo: d.querySelector('#ghRepo').value.trim(), pat: d.querySelector('#ghPat').value.trim() };
+      stor.set('gh_owner', CREDS.owner); stor.set('gh_repo', CREDS.repo); stor.set('gh_pat', CREDS.pat);
+      d.hidden = true; updateConn(); pollOnce();
     };
-    d.querySelector('#ghCancel').onclick = () => { d.hidden = true; };
-    d.querySelector('#ghOwner').value = CREDS.owner || '';
-    d.querySelector('#ghRepo').value = CREDS.repo || 'apk-runner';
-    d.querySelector('#ghPat').value = CREDS.pat || '';
+    d.querySelector('#ghCancel').onclick = () => d.hidden = true;
+    d.querySelector('#ghOwner').value = CREDS.owner || ''; d.querySelector('#ghRepo').value = CREDS.repo; d.querySelector('#ghPat').value = CREDS.pat || '';
     d.hidden = false;
   };
 
   const updateConn = () => {
-    const c = qs('#conn');
-    if (c) c.textContent = CREDS.owner && CREDS.repo ? `github.com/${CREDS.owner}/${CREDS.repo}` : 'Kredensial belum diisi';
+    const c = qs('#conn'); if (c) c.textContent = CREDS.owner && CREDS.repo ? `github.com/${CREDS.owner}/${CREDS.repo}` : 'Kredensial belum diisi';
   };
 
   API.list = async () => {
     if (!CREDS.owner || !CREDS.pat) return [];
     const rel = await ghFetch(`${repoBase()}/releases?per_page=30`);
     return (rel || []).filter(r => (r.tag_name || '').startsWith('build-')).map(r => {
-      const id = r.tag_name.slice(6);
-      let meta = {};
-      try { meta = JSON.parse(r.body || '{}'); } catch (_) {}
+      const id = r.tag_name.slice(6); let meta = {}; try { meta = JSON.parse(r.body || '{}'); } catch (_) {}
       const m = meta.meta || {};
       return { id, name: m.name || r.name || `build-${id}`, pkg: m.pkg || '', ver: m.ver || '', type: m.type || 'debug', fmt: m.fmt || 'apk', st: 'ok', t: new Date(r.published_at || r.created_at).getTime(), pct: 100 };
     });
@@ -156,66 +110,37 @@
     let running = 0, queued = 0;
     try {
       const runs = await ghFetch(`${repoBase()}/actions/runs?per_page=20&event=workflow_dispatch`);
-      for (const r of (runs.workflow_runs || [])) {
-        if (r.status === 'in_progress') running++;
-        if (r.status === 'queued') queued++;
-      }
+      for (const r of (runs.workflow_runs || [])) { if (r.status === 'in_progress') running++; if (r.status === 'queued') queued++; }
     } catch (_) {}
     return { cpu: 0, ram: 0, disk: 0, sdk: '35', gradle: '8.7', jdk: '17', runner: 'github-actions/ubuntu-latest', queue: queued, running };
   };
 
   API.artifact = (b) => {
     if (!b || !b.id || !CREDS.owner) return null;
-    const ext = (b.fmt === 'aab') ? 'aab' : 'apk';
-    return `https://github.com/${CREDS.owner}/${CREDS.repo}/releases/download/build-${b.id}/app.${ext}`;
+    return `https://github.com/${CREDS.owner}/${CREDS.repo}/releases/tag/build-${b.id}`;
   };
 
   API.cancel = async (b) => {
     if (!b || !b.id) return;
     const runs = await ghFetch(`${repoBase()}/actions/runs?per_page=30&event=workflow_dispatch`);
     const run = (runs.workflow_runs || []).find(r => (r.display_title || '').includes(b.id));
-    if (run && run.status !== 'completed') {
-      await ghFetch(`${repoBase()}/actions/runs/${run.id}/cancel`, { method: 'POST' }).catch(() => {});
-    }
-  };
-
-  API.remove = async (id) => {
-    const rel = await ghFetch(`${repoBase()}/releases/tags/build-${id}`).catch(() => null);
-    if (rel) await ghFetch(`${repoBase()}/releases/${rel.id}`, { method: 'DELETE' });
-    return { ok: true };
-  };
-
-  API.removeAll = async () => {
-    const rel = await ghFetch(`${repoBase()}/releases?per_page=100`);
-    for (const r of (rel || [])) {
-      if ((r.tag_name || '').startsWith('build-')) await ghFetch(`${repoBase()}/releases/${r.id}`, { method: 'DELETE' }).catch(() => {});
-    }
-    return { ok: true };
+    if (run && run.status !== 'completed') await ghFetch(`${repoBase()}/actions/runs/${run.id}/cancel`, { method: 'POST' }).catch(() => {});
   };
 
   API.startBuild = async (p, f) => {
-    if (!CREDS.owner || !CREDS.repo) throw new Error('Owner/repo kosong');
     if (!CREDS.pat) { ensureCredsModal(); throw new Error('PAT belum diisi'); }
+    const id = genId(); const branch = 'main';
 
-    const id = genId();
-    const branch = 'main';
-
-    // 1. Ambil commit SHA terakhir
     const refRes = await ghFetch(`${repoBase()}/git/ref/heads/${branch}`);
     const parentSha = refRes.object.sha;
     const commitRes = await ghFetch(`${repoBase()}/git/commits/${parentSha}`);
     const baseTreeSha = commitRes.tree.sha;
-
-    // 2. Siapkan file tree (Unggah via Git Data API untuk bypass CORS)
     const treeEntries = [];
     
     async function addBlobToTree(path, file) {
       if (!file) return;
-      const base64Content = await fileToBase64(file);
-      const blobRes = await ghFetch(`${repoBase()}/git/blobs`, {
-        method: 'POST',
-        body: JSON.stringify({ content: base64Content, encoding: 'base64' })
-      });
+      const b64 = await fileToBase64(file);
+      const blobRes = await ghFetch(`${repoBase()}/git/blobs`, { method: 'POST', body: JSON.stringify({ content: b64, encoding: 'base64' }) });
       treeEntries.push({ path, mode: '100644', type: 'blob', sha: blobRes.sha });
     }
 
@@ -231,40 +156,47 @@
       keystore: f.keystore ? { path: `input/${id}.jks`, alias: p.keystore?.alias || '', storePassword: p.keystore?.password || '', keyPassword: p.keystore?.password || '' } : null,
       gservices: f.gservices ? { path: `input/${id}.gservices.json` } : null,
     };
-    const metaBlob = new Blob([JSON.stringify(metaDoc)], { type: 'application/json' });
-    await addBlobToTree(`input/${id}.json`, metaBlob);
+    await addBlobToTree(`input/${id}.json`, new Blob([JSON.stringify(metaDoc)], { type: 'application/json' }));
 
-    // 3. Buat Tree, Commit, dan Update Branch
-    const treeRes = await ghFetch(`${repoBase()}/git/trees`, {
-      method: 'POST',
-      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
-    });
-    const newCommitRes = await ghFetch(`${repoBase()}/git/commits`, {
-      method: 'POST',
-      body: JSON.stringify({ message: `input ${id} — ${p.name} ${p.ver}`, tree: treeRes.sha, parents: [parentSha] })
-    });
-    await ghFetch(`${repoBase()}/git/refs/heads/${branch}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ sha: newCommitRes.sha, force: false })
-    });
+    const treeRes = await ghFetch(`${repoBase()}/git/trees`, { method: 'POST', body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries }) });
+    const newCommitRes = await ghFetch(`${repoBase()}/git/commits`, { method: 'POST', body: JSON.stringify({ message: `input ${id}`, tree: treeRes.sha, parents: [parentSha] }) });
+    await ghFetch(`${repoBase()}/git/refs/heads/${branch}`, { method: 'PATCH', body: JSON.stringify({ sha: newCommitRes.sha, force: false }) });
 
-    // 4. Picu Workflow (Actions)
     await ghFetch(`${repoBase()}/actions/workflows/build.yml/dispatches`, {
-      method: 'POST',
-      body: JSON.stringify({
-        ref: branch,
-        inputs: { build_id: id, timeout_minutes: String(p.options?.timeoutMin || 120), retention_days: String(p.options?.retentionDays || 7), gradle_version: String(p.options?.gradle || '8.7') },
-      }),
-    }).catch(e => {
-      if (e.status === 404) throw new Error('Workflow .github/workflows/build.yml tidak ditemukan di branch main.');
-      throw e;
+      method: 'POST', body: JSON.stringify({ ref: branch, inputs: { build_id: id, timeout_minutes: String(p.options?.timeoutMin || 120) } }),
     });
-
     return { id };
   };
 
-  // [Sisa fungsi polling API.live(), onEvt(), renderAll(), dll. SAMA SEPERTI SEBELUMNYA]
-  // Saya sertakan di bawah ini secara utuh agar Anda bisa copy-paste.
+  // --- FUNGSI DOWNLOAD BARU (Bypass 404 & Private Repo) ---
+  dl = async function (b) {
+    if (!b || !b.id) { if (typeof toast === 'function') toast('Data build tidak valid'); return; }
+    if (typeof toast === 'function') toast('Mengunduh APK, mohon tunggu...');
+    try {
+      const rel = await ghFetch(`${repoBase()}/releases/tags/build-${b.id}`);
+      if (!rel || !rel.assets || rel.assets.length === 0) throw new Error('Rilis tidak ditemukan (404). Pastikan build sukses.');
+      const asset = rel.assets.find(a => a.name.endsWith('.apk') || a.name.endsWith('.aab'));
+      if (!asset) throw new Error('File APK tidak ada di rilis ini.');
+
+      const res = await fetchWithTimeout(`https://api.github.com/repos/${CREDS.owner}/${CREDS.repo}/releases/assets/${asset.id}`, {
+        headers: { Authorization: `Bearer ${CREDS.pat}`, Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2022-11-28' }
+      }, 120000);
+      if (!res.ok) throw new Error(`Gagal unduh (Status: ${res.status})`);
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = asset.name;
+      document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
+      
+      setTimeout(() => {
+        if (typeof toast === 'function') toast('Berhasil diunduh! Jika gagal install, uninstall versi lama dulu.');
+        else alert('Berhasil diunduh! Jika gagal install, uninstall versi lama dulu.');
+      }, 1500);
+    } catch (e) {
+      if (typeof toast === 'function') toast(e.message);
+      else alert(e.message);
+    }
+  };
 
   const fetchLogChunk = async (buildId, n) => {
     const url = `https://github.com/${CREDS.owner}/${CREDS.repo}/releases/download/build-${buildId}/log-${n}.txt`;
@@ -420,12 +352,6 @@
     const mt = qs('#mTxt');
     if (mt) mt.textContent = !CREDS.pat ? 'PAT belum diisi' : !CREDS.owner ? 'Owner belum diisi' : run ? 'Sedang membangun' : 'GitHub siap';
     updateConn();
-  };
-
-  dl = function (b) {
-    const u = b && API.artifact(b);
-    if (!u) { if (typeof toast === 'function') toast('Artifact belum tersedia'); return; }
-    const a = document.createElement('a'); a.href = u; a.download = ''; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
   };
 
   const startBtn = qs('#startBtn');
