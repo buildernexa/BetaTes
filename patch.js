@@ -1,9 +1,7 @@
 // language: JavaScript (ES2022), file: patch.js
-// GitHub-only build engine. Fully defensive with global error handling & network timeouts.
 (function () {
   'use strict';
 
-  // 1. Global error handler untuk menangkap error yang tidak terduga
   window.addEventListener('error', function(e) {
     alert('Sistem Error: ' + e.message);
   });
@@ -12,8 +10,7 @@
   const qsa = (s) => [...document.querySelectorAll(s)];
   const $ = qs, $$ = qsa;
 
-  // 2. Fetch dengan batas waktu (timeout) agar tidak menggantung selamanya
-  const fetchWithTimeout = (url, options = {}, timeout = 30000) => {
+  const fetchWithTimeout = (url, options = {}, timeout = 60000) => {
     return Promise.race([
       fetch(url, options),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Jaringan Timeout: GitHub tidak merespons')), timeout))
@@ -45,39 +42,51 @@
 
   const GH = 'https://api.github.com';
 
-  const ghFetch = async (path, opts = {}) => {
+  // Fungsi Fetch dengan Auto-Retry (Mengatasi koneksi HP yang tidak stabil)
+  const ghFetch = async (path, opts = {}, retries = 3) => {
     if (!CREDS.pat) throw new Error('PAT kosong');
-    const r = await fetchWithTimeout(GH + path, {
-      ...opts,
-      headers: {
-        Authorization: `Bearer ${CREDS.pat}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...(opts.headers || {}),
-      },
-    });
-    if (!r.ok) {
-      const body = await r.text().catch(() => '');
-      let msg = `GitHub ${r.status}`;
-      try { const j = JSON.parse(body); if (j.message) msg += `: ${j.message}`; }
-      catch (_) { msg += `: ${body.slice(0, 160)}`; }
-      const e = new Error(msg);
-      e.status = r.status;
-      throw e;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const r = await fetchWithTimeout(GH + path, {
+          ...opts,
+          headers: {
+            Authorization: `Bearer ${CREDS.pat}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            ...(opts.headers || {}),
+          },
+        }, 60000); 
+        if (!r.ok) {
+          const body = await r.text().catch(() => '');
+          let msg = `GitHub ${r.status}`;
+          try { const j = JSON.parse(body); if (j.message) msg += `: ${j.message}`; }
+          catch (_) { msg += `: ${body.slice(0, 160)}`; }
+          const e = new Error(msg);
+          e.status = r.status;
+          if (r.status >= 500) { await new Promise(res => setTimeout(res, 2000 * (i + 1))); continue; }
+          throw e;
+        }
+        return r.status === 204 ? null : r.json();
+      } catch (e) {
+        if (i === retries - 1) throw e;
+        await new Promise(res => setTimeout(res, 2000 * (i + 1)));
+      }
     }
-    return r.status === 204 ? null : r.json();
   };
 
   const repoBase = () => `/repos/${CREDS.owner}/${CREDS.repo}`;
   const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-  const classOf = (line) => {
-    if (/\b(error|failed|exception|FAILURE|FAILED)\b/i.test(line)) return 'e';
-    if (/\b(warn|warning)\b/i.test(line)) return 'w';
-    if (/\b(BUILD SUCCESSFUL|sukses|selesai|\[done\])\b/i.test(line)) return 'o';
-    if (/^\[(prepare|deps|build|collect|upload|done|gh|poll)\]/.test(line)) return 'm';
-    return '';
-  };
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
   const ensureCredsModal = () => {
     if (document.getElementById('ghCredsModal')) {
@@ -128,33 +137,19 @@
 
   const updateConn = () => {
     const c = qs('#conn');
-    if (c) c.textContent = CREDS.owner && CREDS.repo
-      ? `github.com/${CREDS.owner}/${CREDS.repo}`
-      : 'Kredensial belum diisi';
+    if (c) c.textContent = CREDS.owner && CREDS.repo ? `github.com/${CREDS.owner}/${CREDS.repo}` : 'Kredensial belum diisi';
   };
 
   API.list = async () => {
     if (!CREDS.owner || !CREDS.pat) return [];
     const rel = await ghFetch(`${repoBase()}/releases?per_page=30`);
-    return (rel || [])
-      .filter(r => (r.tag_name || '').startsWith('build-'))
-      .map(r => {
-        const id = r.tag_name.slice(6);
-        let meta = {};
-        try { meta = JSON.parse(r.body || '{}'); } catch (_) {}
-        const m = meta.meta || {};
-        return {
-          id,
-          name: m.name || r.name || `build-${id}`,
-          pkg: m.pkg || '',
-          ver: m.ver || '',
-          type: m.type || 'debug',
-          fmt: m.fmt || 'apk',
-          st: 'ok',
-          t: new Date(r.published_at || r.created_at).getTime(),
-          pct: 100,
-        };
-      });
+    return (rel || []).filter(r => (r.tag_name || '').startsWith('build-')).map(r => {
+      const id = r.tag_name.slice(6);
+      let meta = {};
+      try { meta = JSON.parse(r.body || '{}'); } catch (_) {}
+      const m = meta.meta || {};
+      return { id, name: m.name || r.name || `build-${id}`, pkg: m.pkg || '', ver: m.ver || '', type: m.type || 'debug', fmt: m.fmt || 'apk', st: 'ok', t: new Date(r.published_at || r.created_at).getTime(), pct: 100 };
+    });
   };
 
   API.machine = async () => {
@@ -166,8 +161,7 @@
         if (r.status === 'queued') queued++;
       }
     } catch (_) {}
-    return { cpu: 0, ram: 0, disk: 0, sdk: '35', gradle: '8.7', jdk: '17',
-             runner: 'github-actions/ubuntu-latest', queue: queued, running };
+    return { cpu: 0, ram: 0, disk: 0, sdk: '35', gradle: '8.7', jdk: '17', runner: 'github-actions/ubuntu-latest', queue: queued, running };
   };
 
   API.artifact = (b) => {
@@ -194,95 +188,83 @@
   API.removeAll = async () => {
     const rel = await ghFetch(`${repoBase()}/releases?per_page=100`);
     for (const r of (rel || [])) {
-      if ((r.tag_name || '').startsWith('build-')) {
-        await ghFetch(`${repoBase()}/releases/${r.id}`, { method: 'DELETE' }).catch(() => {});
-      }
+      if ((r.tag_name || '').startsWith('build-')) await ghFetch(`${repoBase()}/releases/${r.id}`, { method: 'DELETE' }).catch(() => {});
     }
     return { ok: true };
   };
 
   API.startBuild = async (p, f) => {
-    if (!CREDS.owner || !CREDS.repo) throw new Error('Owner/repo kosong — isi kredensial dulu');
+    if (!CREDS.owner || !CREDS.repo) throw new Error('Owner/repo kosong');
     if (!CREDS.pat) { ensureCredsModal(); throw new Error('PAT belum diisi'); }
 
     const id = genId();
-    const tag = `work-${id}`;
+    const branch = 'main';
 
-    const release = await ghFetch(`${repoBase()}/releases`, {
-      method: 'POST',
-      body: JSON.stringify({
-        tag_name: tag,
-        name: `Input ${id}`,
-        body: 'build input — akan dihapus setelah build',
-        draft: true,
-        prerelease: true,
-      }),
-    });
+    // 1. Ambil commit SHA terakhir
+    const refRes = await ghFetch(`${repoBase()}/git/ref/heads/${branch}`);
+    const parentSha = refRes.object.sha;
+    const commitRes = await ghFetch(`${repoBase()}/git/commits/${parentSha}`);
+    const baseTreeSha = commitRes.tree.sha;
 
-    const uploadUrl = release.upload_url.replace(/\{\?.*\}$/, '');
-    const pushAsset = async (name, blob) => {
-      const r = await fetchWithTimeout(`${uploadUrl}?name=${encodeURIComponent(name)}`, {
+    // 2. Siapkan file tree (Unggah via Git Data API untuk bypass CORS)
+    const treeEntries = [];
+    
+    async function addBlobToTree(path, file) {
+      if (!file) return;
+      const base64Content = await fileToBase64(file);
+      const blobRes = await ghFetch(`${repoBase()}/git/blobs`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${CREDS.pat}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/octet-stream',
-        },
-        body: blob,
-      }, 60000); // Upload timeout 60 detik
-      if (!r.ok) {
-        const body = await r.text().catch(() => '');
-        throw new Error(`upload ${name}: ${r.status} ${body.slice(0, 120)}`);
-      }
-    };
+        body: JSON.stringify({ content: base64Content, encoding: 'base64' })
+      });
+      treeEntries.push({ path, mode: '100644', type: 'blob', sha: blobRes.sha });
+    }
 
-    if (f.zip) await pushAsset('source.zip', f.zip);
-    if (f.icon) await pushAsset('icon.png', f.icon);
-    if (f.keystore) await pushAsset('keystore.jks', f.keystore);
-    if (f.gservices) await pushAsset('gservices.json', f.gservices);
+    if (f.zip) await addBlobToTree(`input/${id}.zip`, f.zip);
+    if (f.icon) await addBlobToTree(`input/${id}.icon.png`, f.icon);
+    if (f.keystore) await addBlobToTree(`input/${id}.jks`, f.keystore);
+    if (f.gservices) await addBlobToTree(`input/${id}.gservices.json`, f.gservices);
 
     const metaDoc = {
-      id,
-      meta: p,
-      source: f.zip
-        ? { type: 'zip', path: 'source.zip' }
-        : { type: 'git', url: p.git.url, branch: p.git.branch || 'main', token: p.git.token || '' },
-      icon: f.icon ? { path: 'icon.png' } : null,
-      keystore: f.keystore ? {
-        path: 'keystore.jks',
-        alias: p.keystore?.alias || '',
-        storePassword: p.keystore?.password || '',
-        keyPassword: p.keystore?.password || '',
-      } : null,
-      gservices: f.gservices ? { path: 'gservices.json' } : null,
+      id, meta: p,
+      source: f.zip ? { type: 'zip', path: `input/${id}.zip` } : { type: 'git', url: p.git.url, branch: p.git.branch || 'main', token: p.git.token || '' },
+      icon: f.icon ? { path: `input/${id}.icon.png` } : null,
+      keystore: f.keystore ? { path: `input/${id}.jks`, alias: p.keystore?.alias || '', storePassword: p.keystore?.password || '', keyPassword: p.keystore?.password || '' } : null,
+      gservices: f.gservices ? { path: `input/${id}.gservices.json` } : null,
     };
     const metaBlob = new Blob([JSON.stringify(metaDoc)], { type: 'application/json' });
-    await pushAsset('meta.json', metaBlob);
+    await addBlobToTree(`input/${id}.json`, metaBlob);
 
-    await ghFetch(`${repoBase()}/releases/${release.id}`, {
+    // 3. Buat Tree, Commit, dan Update Branch
+    const treeRes = await ghFetch(`${repoBase()}/git/trees`, {
+      method: 'POST',
+      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries })
+    });
+    const newCommitRes = await ghFetch(`${repoBase()}/git/commits`, {
+      method: 'POST',
+      body: JSON.stringify({ message: `input ${id} — ${p.name} ${p.ver}`, tree: treeRes.sha, parents: [parentSha] })
+    });
+    await ghFetch(`${repoBase()}/git/refs/heads/${branch}`, {
       method: 'PATCH',
-      body: JSON.stringify({ draft: false }),
+      body: JSON.stringify({ sha: newCommitRes.sha, force: false })
     });
 
+    // 4. Picu Workflow (Actions)
     await ghFetch(`${repoBase()}/actions/workflows/build.yml/dispatches`, {
       method: 'POST',
       body: JSON.stringify({
-        ref: 'main',
-        inputs: {
-          build_id: id,
-          timeout_minutes: String(p.options?.timeoutMin || 120),
-          retention_days: String(p.options?.retentionDays || 7),
-          gradle_version: String(p.options?.gradle || '8.7'),
-        },
+        ref: branch,
+        inputs: { build_id: id, timeout_minutes: String(p.options?.timeoutMin || 120), retention_days: String(p.options?.retentionDays || 7), gradle_version: String(p.options?.gradle || '8.7') },
       }),
     }).catch(e => {
-      if (e.status === 404) throw new Error('Workflow .github/workflows/build.yml tidak ada di branch main — push dulu.');
+      if (e.status === 404) throw new Error('Workflow .github/workflows/build.yml tidak ditemukan di branch main.');
       throw e;
     });
 
     return { id };
   };
+
+  // [Sisa fungsi polling API.live(), onEvt(), renderAll(), dll. SAMA SEPERTI SEBELUMNYA]
+  // Saya sertakan di bawah ini secara utuh agar Anda bisa copy-paste.
 
   const fetchLogChunk = async (buildId, n) => {
     const url = `https://github.com/${CREDS.owner}/${CREDS.repo}/releases/download/build-${buildId}/log-${n}.txt`;
@@ -300,11 +282,7 @@
       const asset = (rel.assets || []).find(a => a.name === 'build.log');
       if (!asset) return null;
       const r = await fetchWithTimeout(`https://api.github.com/repos/${CREDS.owner}/${CREDS.repo}/releases/assets/${asset.id}`, {
-        headers: {
-          Authorization: `Bearer ${CREDS.pat}`,
-          Accept: 'application/octet-stream',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
+        headers: { Authorization: `Bearer ${CREDS.pat}`, Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2022-11-28' },
       }, 15000);
       if (!r.ok) return null;
       return (await r.text()).split(/\r?\n/).filter(x => x.length > 0);
@@ -318,6 +296,13 @@
     let lastPhase = -1;
     let polls = 0;
 
+    const classOf = (line) => {
+      if (/\b(error|failed|exception|FAILURE|FAILED)\b/i.test(line)) return 'e';
+      if (/\b(warn|warning)\b/i.test(line)) return 'w';
+      if (/\b(BUILD SUCCESSFUL|sukses|selesai|\[done\])\b/i.test(line)) return 'o';
+      if (/^\[(prepare|deps|build|collect|upload|done|gh|poll)\]/.test(line)) return 'm';
+      return '';
+    };
     const emitLog = (line) => on({ type: 'log', text: line, c: classOf(line) });
 
     const tick = async () => {
@@ -333,7 +318,6 @@
 
         if (runId) {
           const run = await ghFetch(`${repoBase()}/actions/runs/${runId}`);
-
           try {
             const jobs = await ghFetch(`${repoBase()}/actions/runs/${runId}/jobs`);
             const job = (jobs.jobs || [])[0];
@@ -368,7 +352,6 @@
       }
       setTimeout(tick, 4000);
     };
-
     tick();
     b._es = { close: () => { stop = true; } };
     return true;
@@ -410,10 +393,7 @@
     const n = (s) => arr.filter(b => b.st === s).length;
     const set = (id, v) => { const el = qs(id); if (el) el.textContent = v; };
     set('#sTot', arr.length); set('#sOk', n('ok')); set('#sBad', n('bad')); set('#sQ', n('run'));
-
-    const card = (b) => '<div class="item"><span><b>' + esc(String(b.name || 'Tanpa nama')) +
-      '</b><small>' + esc(String(b.ver || '?')) + ' · ' + ago(b.t || Date.now()) +
-      '</small></span>' + sp(b.st || 'bad', b.pct) + '</div>';
+    const card = (b) => '<div class="item"><span><b>' + esc(String(b.name || 'Tanpa nama')) + '</b><small>' + esc(String(b.ver || '?')) + ' · ' + ago(b.t || Date.now()) + '</small></span>' + sp(b.st || 'bad', b.pct) + '</div>';
     const recent = arr.slice(0, 4).map(card).join('') || '<div class="empty">Belum ada build.</div>';
     const r1 = qs('#recent'); if (r1) r1.innerHTML = recent;
     const r2 = qs('#recent2'); if (r2) r2.innerHTML = recent;
@@ -429,17 +409,12 @@
     if (rowsEl) {
       rowsEl.innerHTML = rows.map(b => {
         const id = esc(String(b.id));
-        return '<div class="rw"><div><b>' + esc(String(b.name || 'Tanpa nama')) +
-          '</b><small class="mono">' + esc(String(b.pkg || '')) + '</small></div>' +
-          '<div class="mt">' + esc(String(b.ver || '?')) + ' · ' + esc(String(b.type || '?')) +
-          ' · ' + String(b.fmt || 'apk').toUpperCase() + ' · ' + ago(b.t || Date.now()) + '</div>' +
-          '<div class="ac">' + sp(b.st || 'bad', b.pct) +
-          (b.st === 'ok' ? '<button class="btn mini" data-dl="' + id + '">Unduh</button>' : '') +
-          '<button class="btn mini alt" data-rb="' + id + '">Ulangi</button>' +
-          '<button class="btn mini alt" data-rm="' + id + '">Hapus</button></div></div>';
+        return '<div class="rw"><div><b>' + esc(String(b.name || 'Tanpa nama')) + '</b><small class="mono">' + esc(String(b.pkg || '')) + '</small></div>' +
+          '<div class="mt">' + esc(String(b.ver || '?')) + ' · ' + esc(String(b.type || '?')) + ' · ' + String(b.fmt || 'apk').toUpperCase() + ' · ' + ago(b.t || Date.now()) + '</div>' +
+          '<div class="ac">' + sp(b.st || 'bad', b.pct) + (b.st === 'ok' ? '<button class="btn mini" data-dl="' + id + '">Unduh</button>' : '') +
+          '<button class="btn mini alt" data-rb="' + id + '">Ulangi</button><button class="btn mini alt" data-rm="' + id + '">Hapus</button></div></div>';
       }).join('') || '<div class="empty">Tidak ada build yang cocok.</div>';
     }
-
     const run = n('run') > 0;
     const ms = qs('#mSt'); if (ms) ms.className = 'sp ' + (run ? 'run' : '');
     const mt = qs('#mTxt');
@@ -450,21 +425,12 @@
   dl = function (b) {
     const u = b && API.artifact(b);
     if (!u) { if (typeof toast === 'function') toast('Artifact belum tersedia'); return; }
-    const a = document.createElement('a');
-    a.href = u;
-    a.download = '';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const a = document.createElement('a'); a.href = u; a.download = ''; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
   };
 
-  // 3. Handler Tombol dengan Umpan Balik Visual & Penanganan Error
   const startBtn = qs('#startBtn');
   if (startBtn) startBtn.onclick = async () => {
-    // Simpan teks asli untuk dikembalikan jika terjadi error
     const originalText = startBtn.textContent;
-    
     try {
       if (!CREDS.pat) { ensureCredsModal(); return; }
       
@@ -506,14 +472,10 @@
       };
 
       const permissions = [...document.querySelectorAll('#perms [data-pk].on')].map(el => 'android.permission.' + el.dataset.pk);
-      const features = {
-        orientation: qs('#ori')?.value || 'auto',
-        ...Object.fromEntries(qsa('[data-feat]').map(e => [e.dataset.feat, e.checked]))
-      };
+      const features = { orientation: qs('#ori')?.value || 'auto', ...Object.fromEntries(qsa('[data-feat]').map(e => [e.dataset.feat, e.checked])) };
 
-      // Umpan balik visual
       startBtn.disabled = true;
-      startBtn.textContent = 'Memproses...';
+      startBtn.textContent = 'Mengunggah...';
 
       const r = await API.startBuild({
         name, pkg, type, fmt,
@@ -521,16 +483,9 @@
         vcode: vc,
         framework: qs('#framework')?.value || 'Android native (Gradle)',
         env: qs('#env')?.value || '',
-        git: src === 'git' ? {
-          url: qs('#gitUrl').value, branch: qs('#gitBr').value, token: qs('#gitTok').value,
-        } : null,
-        keystore: type === 'release' ? {
-          alias: qs('#alias')?.value || '',
-          password: qs('#ksPw')?.value || '',
-        } : null,
-        permissions,
-        features,
-        options: opts,
+        git: src === 'git' ? { url: qs('#gitUrl').value, branch: qs('#gitBr').value, token: qs('#gitTok').value } : null,
+        keystore: type === 'release' ? { alias: qs('#alias')?.value || '', password: qs('#ksPw')?.value || '' } : null,
+        permissions, features, options: opts,
       }, {
         zip: src === 'zip' ? qs('#zipIn').files[0] : null,
         icon: (qs('#iconIn') || qsa('input[accept="image/png"]')[0])?.files?.[0] || null,
@@ -538,14 +493,9 @@
         gservices: qs('#gsv')?.files?.[0] || null,
       });
 
-      if (typeof cur !== 'undefined') {
-        cur = { id: r.id, name, pkg, ver: qs('#vName')?.value, type, fmt, st: 'run', t: Date.now(), pct: 0 };
-      }
-      if (typeof builds !== 'undefined') {
-        builds.unshift(cur);
-      }
+      if (typeof cur !== 'undefined') cur = { id: r.id, name, pkg, ver: qs('#vName')?.value, type, fmt, st: 'run', t: Date.now(), pct: 0 };
+      if (typeof builds !== 'undefined') builds.unshift(cur);
       if (typeof renderAll === 'function') renderAll();
-      
       if (typeof keepAwake === 'function') keepAwake(true);
 
       const logEl = qs('#log'); if (logEl) logEl.innerHTML = '';
@@ -558,22 +508,15 @@
       const lt = qs('#liveTitle'); if (lt) lt.textContent = 'Membangun ' + name;
       
       if (typeof drawSteps === 'function') drawSteps(0);
-      if (typeof addLog === 'function') {
-        addLog(`[gh] upload ke release work-${r.id}`, 'o');
-        addLog(`[gh] build_id=${r.id}`, 'm');
-      }
+      if (typeof addLog === 'function') { addLog(`[gh] memicu workflow...`, 'o'); addLog(`[gh] build_id=${r.id}`, 'm'); }
       if (logEl) logEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      // Jangan ubah teks tombol kembali ke 'Mulai build' di sini.
-      // Biarkan 'Memproses...' sampai onEvt menerima status 'ok' atau 'bad'.
-      
       if (API.live(cur, onEvt)) return;
       
     } catch (e) {
       console.error(e);
       if (typeof toast === 'function') toast(e.message || 'Gagal mulai build');
       else alert(e.message || 'Gagal mulai build');
-      
       startBtn.disabled = false;
       startBtn.textContent = originalText;
     }
@@ -653,9 +596,7 @@
 
   setInterval(() => {
     const l = qs('#log');
-    if (l && l.childElementCount > 4000) {
-      while (l.childElementCount > 3000) l.firstElementChild.remove();
-    }
+    if (l && l.childElementCount > 4000) { while (l.childElementCount > 3000) l.firstElementChild.remove(); }
     if (typeof logBuf !== 'undefined' && Array.isArray(logBuf) && logBuf.length > 6000) logBuf.splice(0, logBuf.length - 6000);
   }, 5000);
 
