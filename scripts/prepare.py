@@ -211,6 +211,11 @@ def patch_manifest(mod: Path, meta):
     if feats.get('fullscreen'):
         text = re.sub(r'(<activity\b[^>]*?)(>)',
                       lambda mm: set_attr(mm.group(1), 'android:theme', '@android:style/Theme.NoTitleBar.Fullscreen') + '>', text, count=1)
+                      
+    # Patch agar tidak crash di Android 12+
+    text = re.sub(r'(<activity\b[^>]*?)(>)',
+                  lambda mm: set_attr(mm.group(1), 'android:exported', 'true') + '>',
+                  text, count=1)
 
     mf.write_text(text, encoding='utf-8')
 
