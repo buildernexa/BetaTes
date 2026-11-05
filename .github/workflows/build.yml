@@ -28,26 +28,15 @@ jobs:
       BUILD_ID: ${{ inputs.build_id }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download inputs dari work-{id}
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/input"
-          for i in 1 2 3 4 5; do
-            if gh release download "work-$BUILD_ID" --pattern '*' --dir "$RUNNER_TEMP/input" --repo "$GH_REPO"; then
-              break
-            fi
-            echo "attempt $i failed, retrying in 3s"
-            sleep 3
-          done
-          ls -la "$RUNNER_TEMP/input"
-          test -f "$RUNNER_TEMP/input/meta.json"
+        with:
+          fetch-depth: 1
 
       - name: Read meta
         id: meta
         run: |
           set -euo pipefail
-          META="$RUNNER_TEMP/input/meta.json"
+          META="input/$BUILD_ID.json"
+          test -f "$META" || { echo "Meta missing: $META"; exit 1; }
           jq -e '.meta.name and .meta.pkg' "$META" >/dev/null
           echo "jdk=$(jq -r '.meta.options.jdk // "17"' "$META")" >> "$GITHUB_OUTPUT"
           echo "framework=$(jq -r '.meta.framework // "Android native (Gradle)"' "$META")" >> "$GITHUB_OUTPUT"
@@ -58,7 +47,7 @@ jobs:
           if ! gh release view "build-$BUILD_ID" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release create "build-$BUILD_ID" \
               --title "Build $BUILD_ID" \
-              --notes-file "$RUNNER_TEMP/input/meta.json" \
+              --notes-file "input/$BUILD_ID.json" \
               --repo "$GH_REPO"
           fi
 
@@ -92,10 +81,17 @@ jobs:
 
       - name: Build
         env:
-          INPUT_DIR: ${{ runner.temp }}/input
+          INPUT_DIR: input
           WORK_DIR: ${{ runner.temp }}/work
         run: bash scripts/build.sh "$INPUT_DIR" "$WORK_DIR" "$BUILD_ID"
 
-      - name: Cleanup work release
+      - name: Cleanup input files
         if: always()
-        run: gh release delete "work-$BUILD_ID" --yes --cleanup-tag --repo "$GH_REPO" || true
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git rm -f "input/$BUILD_ID.json" "input/$BUILD_ID.zip" "input/$BUILD_ID.icon.png" "input/$BUILD_ID.jks" "input/$BUILD_ID.gservices.json" 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "cleanup input $BUILD_ID"
+            git push
+          fi
