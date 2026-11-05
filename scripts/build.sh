@@ -28,10 +28,10 @@ upload_phase() {
 }
 
 say "[prepare] membaca meta.json"
-python3 scripts/prepare.py "$INPUT_DIR/meta.json" "$WORK_DIR" 2>&1 | tee -a "$LOG" || fail "prepare.py"
+python3 scripts/prepare.py "$INPUT_DIR/$BUILD_ID.json" "$WORK_DIR" 2>&1 | tee -a "$LOG" || fail "prepare.py"
 upload_phase
 
-META="$INPUT_DIR/meta.json"
+META="$INPUT_DIR/$BUILD_ID.json"
 FW=$(jq -r '.meta.framework // "Android native (Gradle)"' "$META")
 TYPE=$(jq -r '.meta.type // "debug"' "$META")
 FMT=$(jq -r '.meta.fmt // "apk"' "$META")
@@ -104,7 +104,6 @@ case "$FW" in
     [ "$OFFLINE" = "true" ] && ARGS+=(--offline)
     ARGS+=("${CACHE_ARGS[@]}")
     say "[build] $G $TASK ${ARGS[*]} $GARGS"
-    # shellcheck disable=SC2086
     run_to "$G" "$TASK" "${ARGS[@]}" $GARGS || fail "gradle $TASK"
     ;;
 esac
