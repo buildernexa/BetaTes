@@ -1,0 +1,101 @@
+# language: YAML, file: .github/workflows/build.yml
+name: apk-build
+run-name: Build ${{ inputs.build_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:        { required: true,  type: string }
+      timeout_minutes: { required: false, type: string, default: '120' }
+      retention_days:  { required: false, type: string, default: '7' }
+      gradle_version:  { required: false, type: string, default: '8.7' }
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: apk-${{ inputs.build_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_ID: ${{ inputs.build_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download inputs dari work-{id}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/input"
+          for i in 1 2 3 4 5; do
+            if gh release download "work-$BUILD_ID" --pattern '*' --dir "$RUNNER_TEMP/input" --repo "$GH_REPO"; then
+              break
+            fi
+            echo "attempt $i failed, retrying in 3s"
+            sleep 3
+          done
+          ls -la "$RUNNER_TEMP/input"
+          test -f "$RUNNER_TEMP/input/meta.json"
+
+      - name: Read meta
+        id: meta
+        run: |
+          set -euo pipefail
+          META="$RUNNER_TEMP/input/meta.json"
+          jq -e '.meta.name and .meta.pkg' "$META" >/dev/null
+          echo "jdk=$(jq -r '.meta.options.jdk // "17"' "$META")" >> "$GITHUB_OUTPUT"
+          echo "framework=$(jq -r '.meta.framework // "Android native (Gradle)"' "$META")" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure build release exists
+        run: |
+          set -euo pipefail
+          if ! gh release view "build-$BUILD_ID" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release create "build-$BUILD_ID" \
+              --title "Build $BUILD_ID" \
+              --notes-file "$RUNNER_TEMP/input/meta.json" \
+              --repo "$GH_REPO"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.meta.outputs.jdk }}
+          cache: gradle
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ inputs.gradle_version }}
+          cache-read-only: false
+
+      - uses: actions/setup-node@v4
+        if: contains(fromJSON('["React Native","Capacitor / Ionic","Cordova"]'), steps.meta.outputs.framework)
+        with:
+          node-version: '20'
+          cache: npm
+
+      - uses: subosito/flutter-action@v2
+        if: steps.meta.outputs.framework == 'Flutter'
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install helpers
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq unzip zip curl python3
+
+      - name: Build
+        env:
+          INPUT_DIR: ${{ runner.temp }}/input
+          WORK_DIR: ${{ runner.temp }}/work
+        run: bash scripts/build.sh "$INPUT_DIR" "$WORK_DIR" "$BUILD_ID"
+
+      - name: Cleanup work release
+        if: always()
+        run: gh release delete "work-$BUILD_ID" --yes --cleanup-tag --repo "$GH_REPO" || true
