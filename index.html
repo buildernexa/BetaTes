@@ -420,6 +420,6 @@ document.addEventListener("click",e=>{const x=e.target.closest("[data-rb],[data-
  else{const id=x.dataset.rm;builds=builds.filter(b=>String(b.id)!==id);if(dbc)dbc.doc(id).delete().catch(()=>{});renderAll()}});
 addEventListener("offline",()=>toast("Perangkat sedang offline"));addEventListener("online",()=>toast("Kembali online"));
 </script>
-<script src="patch.js"></script>
+<script src="patch.js?v=3"></script>
 </body>
 </html>
