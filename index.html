@@ -1,4 +1,3 @@
-<!-- language: HTML, file: index.html -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -170,7 +169,7 @@ label.tg{cursor:pointer}.pg{margin:0 0 4px}.pg .chips{margin:0 0 12px}.ct small{
         <label class="tg"><span>Naikkan kode versi otomatis</span><input type="checkbox" data-opt="autoVersion"></label>
         <label class="tg"><span>APK terpisah per arsitektur</span><input type="checkbox" data-opt="split"></label>
         <label class="tg"><span>Aplikasi bisa di-debug</span><input type="checkbox" data-opt="debuggable"></label>
-        <div class="row"><div class="fl"><input id="tmo" type="number" placeholder=" " value="30"><label for="tmo">Batas waktu (menit)</label></div><div class="fl"><input id="sub" placeholder=" "><label for="sub">Subfolder proyek</label></div></div>
+        <div class="row"><div class="fl"><input id="tmo" type="number" placeholder=" " value="120"><label for="tmo">Batas waktu (menit)</label></div><div class="fl"><input id="sub" placeholder=" "><label for="sub">Subfolder proyek</label></div></div>
         <div class="fl"><input id="outn" placeholder=" "><label for="outn">Nama berkas keluaran</label></div>
         <div class="fl"><input id="gargs" class="mono" placeholder=" "><label for="gargs">Argumen Gradle tambahan</label></div>
         <div style="margin-top:20px"><span class="tag">google-services.json (Firebase)</span><label class="file"><span>Pilih berkas…</span><b>Telusuri</b><input type="file" id="gsv" accept=".json" hidden></label></div></div>
@@ -196,7 +195,7 @@ label.tg{cursor:pointer}.pg{margin:0 0 4px}.pg .chips{margin:0 0 12px}.ct small{
 <section class="view" id="v-set">
   <h2 class="pt">Pengaturan</h2>
   <div class="grid two">
-    <div class="card" style="background:var(--lime)"><div class="ct" style="background:#fff">Keystore</div><p class="hint" style="margin:0;color:var(--ink)">Keystore dipilih saat build release dan dikirim langsung ke mesin build. Halaman ini tidak menyimpannya.</p></div>
+    <div class="card" style="background:var(--lime)"><div class="ct" style="background:#fff">Keystore</div><p class="hint" style="margin:0;color:var(--ink)">Keystore dipilih saat build release dan dikirim langsung ke mesin build. Jika kosong, akan dibuatkan otomatis.</p></div>
     <div class="card"><div class="ct">Notifikasi</div>
       <div class="fl"><input id="hook" placeholder=" "><label for="hook">URL webhook</label></div>
       <div class="fl"><input id="mail" type="email" placeholder=" "><label for="mail">Email pemberitahuan</label></div>
@@ -358,12 +357,29 @@ renderAll();
 })();
 </script>
 <script>
-const PM=[["Jaringan",[["INTERNET","Internet"],["ACCESS_NETWORK_STATE","Status jaringan"],["ACCESS_WIFI_STATE","Status Wi-Fi"],["NFC","NFC"]]],
-["Perangkat",[["CAMERA","Kamera",1],["RECORD_AUDIO","Mikrofon",1],["VIBRATE","Getar"],["WAKE_LOCK","Layar tetap menyala"],["FLASHLIGHT","Senter"],["USE_BIOMETRIC","Biometrik"],["BLUETOOTH_CONNECT","Bluetooth sambung",1],["BLUETOOTH_SCAN","Bluetooth pindai",1]]],
+const PM=[
+["Jaringan",[["INTERNET","Internet"],["ACCESS_NETWORK_STATE","Status jaringan"],["ACCESS_WIFI_STATE","Status Wi-Fi"],["NFC","NFC"]]],
+["Perangkat & Sistem",[
+  ["CAMERA","Kamera",1],["RECORD_AUDIO","Mikrofon",1],["VIBRATE","Getar"],
+  ["WAKE_LOCK","Layar tetap menyala"],["FLASHLIGHT","Senter"],["USE_BIOMETRIC","Biometrik"],
+  ["FOREGROUND_SERVICE","Layanan latar depan"],["FOREGROUND_SERVICE_DATA_SYNC","Sinkronisasi latar depan"],
+  ["REQUEST_IGNORE_BATTERY_OPTIMIZATIONS","Abaikan optimasi baterai"],
+  ["SYSTEM_ALERT_WINDOW","Tampil di atas aplikasi lain",1],
+  ["QUERY_ALL_PACKAGES","Akses semua aplikasi"],
+  ["REQUEST_INSTALL_PACKAGES","Pasang paket",1]
+]],
 ["Lokasi",[["ACCESS_FINE_LOCATION","Lokasi akurat",1],["ACCESS_COARSE_LOCATION","Lokasi perkiraan",1],["ACCESS_BACKGROUND_LOCATION","Lokasi latar belakang",1]]],
-["Penyimpanan",[["READ_MEDIA_IMAGES","Baca foto",1],["READ_MEDIA_VIDEO","Baca video",1],["READ_MEDIA_AUDIO","Baca audio",1],["READ_EXTERNAL_STORAGE","Baca penyimpanan",1],["WRITE_EXTERNAL_STORAGE","Tulis penyimpanan",1]]],
-["Data pribadi",[["READ_CONTACTS","Kontak",1],["READ_CALENDAR","Kalender",1],["READ_PHONE_STATE","Status telepon",1],["CALL_PHONE","Panggilan telepon",1],["SEND_SMS","Kirim SMS",1],["ACTIVITY_RECOGNITION","Aktivitas fisik",1]]],
-["Sistem",[["POST_NOTIFICATIONS","Notifikasi",1],["RECEIVE_BOOT_COMPLETED","Jalan saat perangkat menyala"],["FOREGROUND_SERVICE","Layanan latar depan"],["SCHEDULE_EXACT_ALARM","Alarm tepat waktu"],["SYSTEM_ALERT_WINDOW","Tampil di atas aplikasi lain",1],["REQUEST_INSTALL_PACKAGES","Pasang paket",1]]]];
+["Penyimpanan",[
+  ["READ_MEDIA_IMAGES","Baca foto",1],["READ_MEDIA_VIDEO","Baca video",1],["READ_MEDIA_AUDIO","Baca audio",1],
+  ["READ_EXTERNAL_STORAGE","Baca penyimpanan",1],["WRITE_EXTERNAL_STORAGE","Tulis penyimpanan",1],
+  ["MANAGE_EXTERNAL_STORAGE","Kelola semua file",1]
+]],
+["Data & Sensor",[
+  ["READ_CONTACTS","Kontak",1],["READ_CALENDAR","Kalender",1],["READ_PHONE_STATE","Status telepon",1],
+  ["CALL_PHONE","Panggilan telepon",1],["SEND_SMS","Kirim SMS",1],["ACTIVITY_RECOGNITION","Aktivitas fisik",1],
+  ["BODY_SENSORS","Sensor tubuh",1],["POST_NOTIFICATIONS","Notifikasi",1],
+  ["RECEIVE_BOOT_COMPLETED","Jalan saat menyala"],["SCHEDULE_EXACT_ALARM","Alarm tepat waktu"]
+]]];
 const BASE=["INTERNET","ACCESS_NETWORK_STATE"],permSel=new Set(BASE);
 function permDraw(){$("#perms").innerHTML=PM.map(([g,l])=>`<div class="pg"><span class="tag">${g}</span><div class="chips">${l.map(([k,n,s])=>`<button type="button" class="chip${permSel.has(k)?" on":""}" data-pk="${k}">${n}${s?" !":""}</button>`).join("")}</div></div>`).join("");$("#pcnt").textContent="("+permSel.size+" dipilih)"}
 $("#perms").onclick=e=>{const b=e.target.closest("[data-pk]");if(!b)return;const k=b.dataset.pk;permSel.has(k)?permSel.delete(k):permSel.add(k);b.classList.toggle("on");$("#pcnt").textContent="("+permSel.size+" dipilih)"};
@@ -420,6 +436,6 @@ document.addEventListener("click",e=>{const x=e.target.closest("[data-rb],[data-
  else{const id=x.dataset.rm;builds=builds.filter(b=>String(b.id)!==id);if(dbc)dbc.doc(id).delete().catch(()=>{});renderAll()}});
 addEventListener("offline",()=>toast("Perangkat sedang offline"));addEventListener("online",()=>toast("Kembali online"));
 </script>
-<script src="patch.js?v=3"></script>
+<script src="patch.js?v=5"></script>
 </body>
 </html>
