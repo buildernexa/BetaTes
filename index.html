@@ -1,0 +1,425 @@
+<!-- language: HTML, file: index.html -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pabrik APK</title>
+<meta name="description" content="Bangun APK dan AAB Android dari kode proyek Anda, lengkap dengan log langsung dan riwayat build.">
+<meta name="theme-color" content="#eceffa">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{--ink:#12121a;--bg:#eceffa;--blue:#3a4bff;--lime:#c8f03c;--coral:#ff7a59;--sun:#ffd23f;--mute:#5d6075;--sh:4px 4px 0 var(--ink);--sp:cubic-bezier(.3,1.6,.5,1);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font:15px/1.5 "Bricolage Grotesque",system-ui,sans-serif;background-color:var(--bg);background-image:radial-gradient(rgba(18,18,26,.16) 1.3px,transparent 1.6px);background-size:22px 22px;min-height:100vh;padding-bottom:100px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+.mono{font-family:"JetBrains Mono",monospace}
+header{position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:20;max-width:1100px;margin:8px 12px 0;display:flex;align-items:center;gap:12px;background:#fff;border:3px solid var(--ink);border-radius:20px;box-shadow:var(--sh);padding:7px 8px 7px 8px;animation:drop .7s var(--sp) both}
+@media(min-width:1124px){header{margin:8px auto 0}}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;flex:1;letter-spacing:-.02em}
+.logo i{width:34px;height:34px;border-radius:10px;background:var(--blue);border:3px solid var(--ink);display:grid;place-items:center;color:#fff;font-style:normal;font-size:15px}
+.pn{position:relative;display:flex;background:#fff;border:3px solid var(--ink);border-radius:16px;padding:4px}
+.pn button{position:relative;z-index:1;border:0;background:none;font:inherit;font-weight:700;font-size:14px;padding:7px 18px;border-radius:10px;cursor:pointer;color:var(--ink)}
+.ind{position:absolute;top:4px;bottom:4px;left:0;width:0;background:var(--lime);border:2.5px solid var(--ink);border-radius:10px;transition:transform .3s ease,width .3s ease}
+#tabs{display:none}
+#nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:20;box-shadow:var(--sh);width:min(94vw,420px)}
+#nav button{flex:1;padding:10px 4px;font-size:13px}
+@media(min-width:900px){#tabs{display:flex}#nav{display:none}body{padding-bottom:40px}}
+.sp{display:inline-flex;align-items:center;gap:6px;border:2.5px solid var(--ink);border-radius:8px;padding:2px 10px;font-size:12.5px;font-weight:700;white-space:nowrap;background:var(--lime)}
+.sp.bad{background:var(--coral)}.sp.run{background:var(--sun)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ink)}.run .dot{animation:pulse 1s infinite}
+main{max-width:1100px;margin:0 auto;padding:22px 16px}
+.view{display:none}.view.on{display:block;animation:pop .25s ease both}
+.pt{display:inline-block;margin:6px 0 22px;background:var(--sun);border:3px solid var(--ink);border-radius:14px;box-shadow:var(--sh);padding:2px 22px 6px;font-size:clamp(28px,6vw,44px);font-weight:800;letter-spacing:-.03em;transform:rotate(-1.5deg)}
+.card{background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:20px;margin-bottom:22px}
+.ct{display:inline-flex;background:var(--lime);border:2.5px solid var(--ink);border-radius:8px;padding:2px 14px;font-weight:800;font-size:14px;margin:0 0 14px}
+.grid{display:grid;gap:22px}.stats{grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+.sc{border:3px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:16px 22px;transition:transform .15s ease}
+.sc:hover{transform:translate(-2px,-2px)}
+.sc b{display:block;font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.04em}.sc span{font-size:13px;font-weight:500}
+.fl{position:relative;margin:22px 0 4px}
+.fl input,.fl textarea,select{width:100%;font:inherit;font-size:15px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:12px;height:48px;padding:0 16px;caret-color:var(--blue);transition:box-shadow .15s ease}
+.fl textarea{height:auto;min-height:96px;padding:13px 16px;border-radius:12px;resize:vertical}
+.fl label{position:absolute;left:12px;top:12px;padding:0 6px;color:var(--mute);font-weight:500;border-radius:6px;pointer-events:none;transition:top .18s ease,font-size .18s ease,color .18s ease}
+.fl input:focus+label,.fl input:not(:placeholder-shown)+label,.fl textarea:focus+label,.fl textarea:not(:placeholder-shown)+label{top:-10px;font-size:12px;font-weight:700;color:var(--ink);background:#fff}.fl input:focus+label,.fl textarea:focus+label{color:var(--blue)}
+.fl input:focus,.fl textarea:focus,select:focus{outline:0;box-shadow:3px 3px 0 var(--blue)}
+select{appearance:none;cursor:pointer;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1.5 1.5l5.5 5.5 5.5-5.5' fill='none' stroke='%2312121a' stroke-width='3'/%3E%3C/svg%3E") no-repeat right 18px center}
+.tag{display:inline-block;background:var(--sun);border:2.5px solid var(--ink);border-radius:6px;font-size:12px;font-weight:800;padding:0 10px;margin:0 0 6px 0}
+.f{margin-bottom:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.seg{display:flex;gap:4px;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:4px}
+.seg button{flex:1;border:2.5px solid transparent;background:none;border-radius:9px;font:inherit;font-weight:700;padding:8px;cursor:pointer;transition:background .15s ease,color .15s ease}
+.seg button.on{background:var(--blue);color:#fff;border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 13px "JetBrains Mono",monospace;background:#fff;border:3px solid var(--ink);border-radius:10px;padding:6px 14px;cursor:pointer;transition:background .15s ease}
+.chip.on{background:var(--lime);box-shadow:2px 2px 0 var(--ink)}.chip.on::before{content:"✓ "}
+.tg{display:flex;justify-content:space-between;align-items:center;font-weight:500;padding:6px 0}
+.tg input{appearance:none;width:56px;height:32px;border:3px solid var(--ink);border-radius:999px;background:#fff;position:relative;cursor:pointer;transition:background .25s;flex:none}
+.tg input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink);transition:transform .2s ease}
+.tg input:checked{background:var(--lime)}.tg input:checked::after{transform:translateX(24px)}
+.tg input:focus-visible,.btn:focus-visible,.chip:focus-visible,.seg button:focus-visible,.pn button:focus-visible,.drop:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.file{display:flex;align-items:center;justify-content:space-between;gap:10px;height:48px;padding:0 6px 0 16px;background:#fff;border:3px solid var(--ink);border-radius:12px;cursor:pointer;color:var(--mute);font-weight:500;overflow:hidden;transition:box-shadow .15s ease}
+.file:hover{box-shadow:3px 3px 0 var(--ink)}.file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file b{background:var(--ink);color:#fff;border-radius:7px;padding:4px 12px;font-size:13px;flex:none}
+.drop{border:3px dashed var(--ink);border-radius:14px;padding:26px 14px;text-align:center;cursor:pointer;font-weight:500;background:#fff;transition:background .15s ease}
+.drop:hover{background:var(--lime)}.drop.has{border-style:solid;background:var(--lime)}
+.drop i{display:grid;place-items:center;width:46px;height:46px;margin:0 auto 8px;border-radius:12px;background:var(--ink);color:var(--lime);font-style:normal;font-size:22px}
+.btn{font:800 15px "Bricolage Grotesque",sans-serif;cursor:pointer;color:#fff;background:var(--blue);border:3px solid var(--ink);border-radius:12px;box-shadow:var(--sh);padding:12px 24px;transition:transform .12s ease,box-shadow .12s ease}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
+.btn.alt{background:#fff;color:var(--ink)}.btn.lime{background:var(--lime);color:var(--ink)}.btn.go{width:100%;font-size:17px;padding:15px}.btn.mini{padding:5px 16px;font-size:13px;box-shadow:3px 3px 0 var(--ink)}.btn:disabled{opacity:.5;pointer-events:none}
+.term{background:var(--ink);border:3px solid var(--ink);border-radius:16px;box-shadow:6px 6px 0 var(--blue);margin-bottom:22px;overflow:hidden}
+.tb{display:flex;align-items:center;gap:8px;padding:12px 16px;color:#fff;font-weight:700;font-size:14px;border-bottom:3px solid #2b2b40}
+.tb i{width:12px;height:12px;border-radius:50%;background:var(--coral)}.tb i+i{background:var(--sun)}.tb i+i+i{background:var(--lime)}.tb span{margin-left:8px}
+.log{height:220px;overflow:auto;padding:14px 18px;font:12.5px/1.7 "JetBrains Mono",monospace;color:#d6d8f0;white-space:pre-wrap}
+.log::after{content:"▍";color:var(--lime);animation:blink 1s steps(2) infinite}
+.log .e{color:#ff9a8a}.log .w{color:var(--sun)}.log .o{color:var(--lime)}.log .m{color:#7f82a8}
+.steps{display:flex;flex-wrap:wrap;gap:6px;padding:4px 16px 12px}
+.st{font-size:12px;font-weight:700;border:2px solid #3b3b58;color:#9a9cc0;border-radius:8px;padding:2px 10px;transition:background .2s ease}
+.st.done{background:var(--lime);border-color:var(--lime);color:var(--ink)}.st.now{background:var(--sun);border-color:var(--sun);color:var(--ink)}.st.fail{background:var(--coral);border-color:var(--coral);color:var(--ink)}
+.pb{margin:0 16px 14px;height:18px;border:3px solid #3b3b58;border-radius:8px;overflow:hidden}
+.pb i{display:block;height:100%;width:0;border-radius:0;background:repeating-linear-gradient(45deg,var(--lime) 0 10px,#a9d11f 10px 20px);background-size:28px 28px;transition:width .5s}
+.pb.on i{animation:stripe .8s linear infinite}
+.tact{display:flex;gap:10px;flex-wrap:wrap;padding:0 16px 16px}
+.item,.rw{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:3px solid var(--ink);border-radius:14px;background:#fff;padding:9px 12px 9px 16px;margin-bottom:12px;transition:box-shadow .15s ease}
+.item:hover,.rw:hover{box-shadow:3px 3px 0 var(--ink)}
+.item small,.rw small{display:block;color:var(--mute);font-size:12px;line-height:1.3}
+.rw{border-radius:14px;padding:12px 14px}.rw .mt{flex:1;min-width:150px;font-size:13px;color:var(--mute)}.rw .ac{display:flex;align-items:center;gap:10px}
+.bar{height:20px;background:#fff;border:3px solid var(--ink);border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blue);border-right:3px solid var(--ink);transition:width .5s ease}
+.br{margin-bottom:14px}.br div:first-child{display:flex;justify-content:space-between;font-weight:500;font-size:13px;margin-bottom:5px}
+.hint{font-size:12px;color:var(--mute)}.empty{text-align:center;color:var(--mute);padding:20px;font-weight:500}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 88px);transform:translate(-50%,30px) scale(.9);background:var(--sun);border:3px solid var(--ink);border-radius:12px;box-shadow:var(--sh);padding:9px 18px;font-weight:700;font-size:14px;opacity:0;pointer-events:none;z-index:40;max-width:92%;transition:all .25s ease}
+#toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
+@media(min-width:760px){.stats{grid-template-columns:repeat(4,1fr)}.two{grid-template-columns:1fr 1fr}}
+@media(min-width:900px){.build{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sticky{position:sticky;top:96px;align-self:start}#toast{bottom:28px}}
+.lt{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:3px solid #2b2b40}
+.lt button{font:700 12px "Bricolage Grotesque",sans-serif;color:#fff;background:#2b2b40;border:2px solid #3b3b58;border-radius:8px;padding:3px 10px;cursor:pointer}.lt button:hover{background:#3b3b58}.lt button:focus-visible{outline:3px solid var(--blue)}
+label.tg{cursor:pointer}.pg{margin:0 0 4px}.pg .chips{margin:0 0 12px}.ct small{font-weight:500;margin-left:6px}
+.modal{position:fixed;inset:0;background:rgba(18,18,26,.65);display:grid;place-items:center;z-index:50;padding:16px}.modal[hidden]{display:none}.modal .card{width:min(92vw,420px);margin:0}
+@keyframes drop{from{transform:translateY(-70px);opacity:0}}
+@keyframes pop{from{transform:translateY(8px);opacity:0}}
+@keyframes blink{50%{opacity:0}}
+@keyframes pulse{50%{transform:scale(1.15);opacity:.7}}
+@keyframes stripe{to{background-position:28px 0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i>▲</i>pabrik.apk</div>
+  <div class="pn" id="tabs"><i class="ind"></i><button class="on" data-go="dasbor">Dasbor</button><button data-go="baru">Build baru</button><button data-go="riwayat">Riwayat</button><button data-go="set">Pengaturan</button></div>
+  <span class="sp" id="mSt"><i class="dot"></i><span id="mTxt">Mesin siap</span></span>
+</header>
+
+<main>
+<section class="view on" id="v-dasbor">
+  <h2 class="pt">Dasbor</h2>
+  <div class="grid stats">
+    <div class="sc" style="background:var(--blue);color:#fff"><b id="sTot">0</b><span>Total build</span></div>
+    <div class="sc" style="background:var(--lime)"><b id="sOk">0</b><span>Berhasil</span></div>
+    <div class="sc" style="background:var(--coral)"><b id="sBad">0</b><span>Gagal</span></div>
+    <div class="sc" style="background:var(--sun)"><b id="sQ">0</b><span>Sedang berjalan</span></div>
+  </div>
+  <div class="grid two">
+    <div class="card"><div class="ct">Kondisi mesin</div>
+      <div class="br"><div><span>CPU</span><span id="cpuT">12%</span></div><div class="bar"><i id="cpuB" style="width:12%"></i></div></div>
+      <div class="br"><div><span>Memori</span><span id="ramT">28%</span></div><div class="bar"><i id="ramB" style="width:28%"></i></div></div>
+      <div class="br"><div><span>Disk</span><span id="dskT">0%</span></div><div class="bar"><i id="dskB" style="width:0"></i></div></div>
+      <div class="hint" id="mInfo">Menunggu sambungan ke mesin build</div></div>
+    <div class="card"><div class="ct">Build terakhir</div><div id="recent"></div></div>
+  </div>
+  <button class="btn" data-go="baru">Mulai build baru</button>
+</section>
+
+<section class="view" id="v-baru">
+  <h2 class="pt">Build baru</h2>
+  <div class="grid build">
+    <div>
+      <div class="card"><div class="ct">Sumber kode</div>
+        <div class="seg f" id="srcSeg"><button class="on" data-v="zip">Unggah ZIP</button><button data-v="git">Repositori Git</button></div>
+        <div id="srcZip" class="f"><div class="drop" id="drop" tabindex="0" role="button"><i>↑</i>Ketuk untuk memilih berkas .zip proyek</div><input type="file" id="zipIn" accept=".zip" hidden></div>
+        <div id="srcGit" hidden>
+          <div class="fl"><input id="gitUrl" placeholder=" " autocomplete="off"><label for="gitUrl">URL repositori</label></div><button type="button" class="btn alt mini" id="qrBtn" style="margin-top:12px">Pindai QR dengan kamera</button>
+          <div class="row"><div class="fl"><input id="gitBr" placeholder=" " value="main"><label for="gitBr">Cabang</label></div><div class="fl"><input id="gitTok" type="password" placeholder=" " autocomplete="off"><label for="gitTok">Token (opsional)</label></div></div></div>
+        <div style="margin-top:20px"><span class="tag">Jenis proyek</span><select id="framework"><option>Android native (Gradle)</option><option>Flutter</option><option>React Native</option><option>Capacitor / Ionic</option><option>Cordova</option></select></div></div>
+      <div class="card"><div class="ct">Identitas aplikasi</div>
+        <div class="fl"><input id="appName" placeholder=" " autocomplete="off"><label for="appName">Nama aplikasi</label></div>
+        <div class="fl"><input id="pkg" class="mono" placeholder=" " autocomplete="off" autocapitalize="none"><label for="pkg">ID paket (com.contoh.app)</label></div>
+        <div class="row"><div class="fl"><input id="vName" placeholder=" " value="1.0.0"><label for="vName">Versi</label></div><div class="fl"><input id="vCode" type="number" placeholder=" " value="1"><label for="vCode">Kode versi</label></div></div>
+        <div style="margin-top:20px"><span class="tag">Ikon aplikasi (PNG 512×512)</span><label class="file"><span>Pilih berkas…</span><b>Telusuri</b><input type="file" accept="image/png" hidden></label></div></div>
+      <div class="card"><div class="ct">Konfigurasi build</div>
+        <div class="f"><span class="tag">Jenis build</span><div class="seg" id="typeSeg"><button class="on" data-v="debug">Debug</button><button data-v="release">Release</button></div></div>
+        <div class="f"><span class="tag">Format keluaran</span><div class="seg" id="fmtSeg"><button class="on" data-v="apk">APK</button><button data-v="aab">AAB</button></div></div>
+        <div class="row f"><div><span class="tag">SDK minimum</span><select id="minSdk"><option>21</option><option selected>24</option><option>26</option><option>29</option></select></div><div><span class="tag">SDK target</span><select id="tgtSdk"><option>33</option><option selected>34</option></select></div></div>
+        <div class="f"><span class="tag">Arsitektur</span><div class="chips" id="arch"><button class="chip on">arm64-v8a</button><button class="chip on">armeabi-v7a</button><button class="chip">x86_64</button></div></div>
+        <div class="tg"><span>Perkecil kode (R8)</span><input type="checkbox" aria-label="R8" data-opt="r8"></div>
+        <div class="fl"><textarea id="env" placeholder=" "></textarea><label for="env">Variabel lingkungan (KEY=nilai)</label></div>
+        <div id="signCard" hidden style="margin-top:22px"><span class="tag">Tanda tangan rilis</span><label class="file"><span>Pilih keystore (.jks)…</span><b>Telusuri</b><input type="file" hidden></label>
+          <div class="row"><div class="fl"><input id="alias" placeholder=" "><label for="alias">Alias</label></div><div class="fl"><input id="ksPw" type="password" placeholder=" "><label for="ksPw">Kata sandi</label></div></div></div></div>
+      <div class="card"><div class="ct">Izin aplikasi Android<small id="pcnt"></small></div><p class="hint" style="margin:0 0 14px">Izin ditulis ke AndroidManifest. Izin bertanda ! diminta ke pengguna saat aplikasi berjalan.</p><div id="perms"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn alt mini" id="pBase">Dasar</button><button type="button" class="btn alt mini" id="pNone">Kosongkan</button></div></div>
+      <div class="card"><div class="ct">Perilaku aplikasi</div><div class="f"><span class="tag">Orientasi layar</span><select id="ori"><option value="auto">Otomatis</option><option value="portrait">Potret</option><option value="landscape">Lanskap</option></select></div>
+        <label class="tg"><span>Layar tetap menyala saat aplikasi dibuka</span><input type="checkbox" data-feat="keepScreenOn"></label>
+        <label class="tg"><span>Layar penuh (immersive)</span><input type="checkbox" data-feat="fullscreen"></label>
+        <label class="tg"><span>Izinkan lalu lintas HTTP (cleartext)</span><input type="checkbox" data-feat="cleartext"></label>
+        <label class="tg"><span>Izinkan backup data</span><input type="checkbox" data-feat="backup" checked></label>
+        <label class="tg"><span>Akselerasi perangkat keras</span><input type="checkbox" data-feat="hwAccel" checked></label></div>
+      <div class="card"><div class="ct">Opsi build lanjutan</div>
+        <label class="tg"><span>Bersihkan dulu (clean build)</span><input type="checkbox" data-opt="clean"></label>
+        <label class="tg"><span>Pakai cache Gradle</span><input type="checkbox" data-opt="cache" checked></label>
+        <label class="tg"><span>Mode offline</span><input type="checkbox" data-opt="offline"></label>
+        <label class="tg"><span>Naikkan kode versi otomatis</span><input type="checkbox" data-opt="autoVersion"></label>
+        <label class="tg"><span>APK terpisah per arsitektur</span><input type="checkbox" data-opt="split"></label>
+        <label class="tg"><span>Aplikasi bisa di-debug</span><input type="checkbox" data-opt="debuggable"></label>
+        <div class="row"><div class="fl"><input id="tmo" type="number" placeholder=" " value="30"><label for="tmo">Batas waktu (menit)</label></div><div class="fl"><input id="sub" placeholder=" "><label for="sub">Subfolder proyek</label></div></div>
+        <div class="fl"><input id="outn" placeholder=" "><label for="outn">Nama berkas keluaran</label></div>
+        <div class="fl"><input id="gargs" class="mono" placeholder=" "><label for="gargs">Argumen Gradle tambahan</label></div>
+        <div style="margin-top:20px"><span class="tag">google-services.json (Firebase)</span><label class="file"><span>Pilih berkas…</span><b>Telusuri</b><input type="file" id="gsv" accept=".json" hidden></label></div></div>
+    </div>
+    <div class="sticky">
+      <div class="term"><div class="tb"><i></i><i></i><i></i><span id="liveTitle">Terminal build</span></div>
+        <div class="lt"><button id="lcopy">Salin log</button><button id="lsave">Simpan log</button><button id="lclear">Bersihkan</button></div><div class="log" id="log"><div class="m">$ menunggu build dimulai</div></div>
+        <div class="steps" id="steps"></div><div class="pb" id="pb"><i id="liveBar"></i></div>
+        <div class="tact"><button class="btn alt" id="cancelBtn" hidden>Batalkan</button><button class="btn lime" id="dlBtn" hidden>Unduh hasil</button></div></div>
+      <button class="btn go" id="startBtn" style="margin-bottom:22px">Mulai build</button>
+      <div class="card"><div class="ct">Build terakhir</div><div id="recent2"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="v-riwayat">
+  <h2 class="pt">Riwayat</h2>
+  <div class="row" style="margin-bottom:22px;align-items:end"><div class="fl" style="margin:0"><input id="q" placeholder=" "><label for="q">Cari nama atau ID paket</label></div>
+    <select id="fil" aria-label="Status"><option value="">Semua status</option><option value="ok">Berhasil</option><option value="bad">Gagal</option><option value="run">Berjalan</option></select></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px"><button class="btn alt mini" id="exp">Ekspor CSV</button><button class="btn alt mini" id="clr">Hapus semua riwayat</button></div><div id="rows"></div>
+</section>
+
+<section class="view" id="v-set">
+  <h2 class="pt">Pengaturan</h2>
+  <div class="grid two">
+    <div class="card" style="background:var(--lime)"><div class="ct" style="background:#fff">Keystore</div><p class="hint" style="margin:0;color:var(--ink)">Keystore dipilih saat build release dan dikirim langsung ke mesin build. Halaman ini tidak menyimpannya.</p></div>
+    <div class="card"><div class="ct">Notifikasi</div>
+      <div class="fl"><input id="hook" placeholder=" "><label for="hook">URL webhook</label></div>
+      <div class="fl"><input id="mail" type="email" placeholder=" "><label for="mail">Email pemberitahuan</label></div>
+      <div class="tg"><span>Kirim saat build gagal</span><input type="checkbox" checked aria-label="Gagal"></div>
+      <div class="tg"><span>Kirim saat build berhasil</span><input type="checkbox" aria-label="Berhasil"></div></div>
+    <div class="card"><div class="ct">Mesin build</div>
+      <div class="row f"><div><span class="tag">JDK</span><select id="jdk"><option>11</option><option selected>17</option></select></div><div><span class="tag">Gradle</span><select id="grd"><option>7.6</option><option selected>8.7</option></select></div></div>
+      <div class="row"><div class="fl"><input id="par" type="number" placeholder=" " value="2"><label for="par">Build paralel maks.</label></div><div class="fl"><input id="ret" type="number" placeholder=" " value="30"><label for="ret">Simpan (hari)</label></div></div></div>
+    <div class="card" style="background:var(--sky,#a9d6ff)"><div class="ct" style="background:#fff">Sambungan mesin build</div><p id="conn" style="margin:0 0 8px;font-weight:700"></p><p class="hint" style="margin:0;color:var(--ink)">Alamat server diatur lewat CONFIG.apiBase di bagian atas skrip.</p></div>
+    <div class="card"><div class="ct">Perangkat &amp; notifikasi</div>
+      <label class="tg"><span>Layar tetap menyala saat build</span><input type="checkbox" data-pref="wake"></label>
+      <label class="tg"><span>Getar saat build selesai</span><input type="checkbox" data-pref="vib"></label>
+      <label class="tg"><span>Suara saat build selesai</span><input type="checkbox" data-pref="snd"></label>
+      <label class="tg"><span>Notifikasi peramban</span><input type="checkbox" data-pref="ntf"></label>
+      <label class="tg"><span>Gulir log otomatis</span><input type="checkbox" data-pref="auto"></label>
+      <label class="tg"><span>Cap waktu di log</span><input type="checkbox" data-pref="ts"></label>
+      <div class="f" style="margin-top:8px"><span class="tag">Ukuran huruf log</span><select data-pref="fs"><option value="11">Kecil</option><option value="13">Sedang</option><option value="15">Besar</option></select></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn alt mini" id="tVib">Tes getar</button><button class="btn alt mini" id="tSnd">Tes suara</button></div></div>
+    <div class="card"><div class="ct">Status izin perangkat</div><div id="permRows"></div><button class="btn alt mini" id="permRe">Periksa ulang</button></div>
+  </div>
+  <button class="btn" id="saveSet">Simpan pengaturan</button>
+</section>
+</main>
+
+<div class="pn" id="nav"><i class="ind"></i><button class="on" data-go="dasbor">Dasbor</button><button data-go="baru">Build</button><button data-go="riwayat">Riwayat</button><button data-go="set">Atur</button></div>
+<div id="qr" class="modal" hidden><div class="card"><div class="ct">Pindai QR repositori</div><video id="qv" playsinline muted style="width:100%;border:3px solid var(--ink);border-radius:12px;background:#000"></video><p class="hint" id="qm"></p><button class="btn alt" id="qx">Tutup</button></div></div>
+<div id="toast" role="status"></div>
+
+<script>
+const CONFIG={apiBase:"",token:""};
+let net=true,dbc=null,unsub=null;
+const H=()=>CONFIG.token?{Authorization:"Bearer "+CONFIG.token}:{};
+const J=r=>{if(!r.ok)throw new Error("Server menjawab "+r.status);return r.json()};
+const TK=()=>CONFIG.token?"?token="+encodeURIComponent(CONFIG.token):"";
+const API={
+ list:()=>fetch(CONFIG.apiBase+"/builds",{headers:H()}).then(J),
+ machine:()=>fetch(CONFIG.apiBase+"/machine",{headers:H()}).then(J),
+ async startBuild(p,f){
+  if(!CONFIG.apiBase)return{id:"b"+Date.now()};
+  const fd=new FormData();fd.append("meta",JSON.stringify(p));for(const k in f)if(f[k])fd.append(k,f[k]);
+  return fetch(CONFIG.apiBase+"/builds",{method:"POST",headers:H(),body:fd}).then(J)},
+ live(b,on){if(!CONFIG.apiBase)return false;const es=new EventSource(CONFIG.apiBase+"/builds/"+b.id+"/events"+TK());es.onmessage=m=>on(JSON.parse(m.data));es.onerror=()=>netState(false);es.onopen=()=>netState(true);b._es=es;return true},
+ cancel:b=>CONFIG.apiBase?fetch(CONFIG.apiBase+"/builds/"+b.id+"/cancel",{method:"POST",headers:H()}):0,
+ artifact:b=>CONFIG.apiBase?CONFIG.apiBase+"/builds/"+b.id+"/artifact"+TK():null,
+ sync(b){if(!dbc)return;dbc.doc(String(b.id)).set({id:b.id,name:b.name,pkg:b.pkg,ver:b.ver,type:b.type,fmt:b.fmt,st:b.st,t:b.t,pct:b.pct||0}).catch(()=>{dbc=null;unsub&&unsub();toast("Antrean bersama tidak tersedia, build berjalan lokal")})}
+};
+function netState(v){if(net===v)return;net=v;renderAll();toast(v?"Tersambung kembali ke mesin build":"Koneksi ke mesin build terputus")}
+function onEvt(e){
+ if(e.type==="log")addLog(e.text,e.c);
+ if(e.type==="step")drawSteps(e.n);
+ if(e.type==="progress"){cur.pct=e.pct;$("#liveBar").style.width=e.pct+"%"}
+ if(e.type==="status"){
+  cur.st=e.st;notifyDone(e.st);$("#startBtn").disabled=false;$("#cancelBtn").hidden=true;$("#pb").classList.remove("on");
+  if(e.st==="ok"){drawSteps(5);$("#liveBar").style.width="100%";$("#dlBtn").hidden=false;toast("Build selesai")}
+  else{drawSteps(2,true);toast("Build gagal atau dibatalkan")}
+  cur._es&&cur._es.close();renderAll()}
+}
+function dl(b){const u=b&&API.artifact(b);u?window.open(u,"_blank"):toast("Mesin build belum tersambung, unduhan belum tersedia")}
+const STEPS=["Kode","Dependensi","Kompilasi","Tanda tangan","Selesai"];
+const LOGS=[["$ git clone proyek","m"],["Mengunduh dependensi Gradle…"],["> Task :app:compileKotlin"],["> Task :app:mergeResources"],["> Task :app:packageRelease"],["Menandatangani paket…","w"],["BUILD SUCCESSFUL","o"]];
+let builds=[
+ {id:1,name:"Toko Saya",pkg:"com.contoh.toko",ver:"1.2.0",type:"release",fmt:"apk",st:"ok",t:Date.now()-18e6},
+ {id:2,name:"Toko Saya",pkg:"com.contoh.toko",ver:"1.1.9",type:"debug",fmt:"apk",st:"bad",t:Date.now()-97e6},
+ {id:3,name:"Catatan Harian",pkg:"id.app.catatan",ver:"0.9.1",type:"debug",fmt:"apk",st:"ok",t:Date.now()-187e6}];
+let cur=null,timer=null,type="debug",fmt="apk",src="zip";
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const LB={ok:"Berhasil",bad:"Gagal",run:"Berjalan"};
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ago=t=>{const m=Math.round((Date.now()-t)/6e4);return m<1?"baru saja":m<60?m+" mnt lalu":m<1440?Math.round(m/60)+" jam lalu":Math.round(m/1440)+" hari lalu"};
+const sp=(s,p)=>`<span class="sp ${s==="ok"?"":s}">${s==="run"?'<i class="dot"></i>':""}${LB[s]}${s==="run"&&p?" "+p+"%":""}</span>`;
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),2400)}
+function ind(n){const a=n.querySelector("button.on"),i=n.querySelector(".ind");if(!a||!a.offsetWidth)return;i.style.width=a.offsetWidth+"px";i.style.transform=`translateX(${a.offsetLeft}px)`}
+const inds=()=>{ind($("#tabs"));ind($("#nav"))};
+function go(v){$$(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));$$(".pn button").forEach(b=>b.classList.toggle("on",b.dataset.go===v));inds();scrollTo(0,0)}
+$$("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+$$("[data-t]").forEach(b=>b.onclick=()=>toast(b.dataset.t));
+addEventListener("resize",inds);document.fonts.ready.then(inds);inds();
+
+document.addEventListener("change",e=>{if(e.target.type==="file"&&e.target.id!=="zipIn"&&e.target.files[0])e.target.previousElementSibling.previousElementSibling.textContent=e.target.files[0].name});
+const list=()=>builds.slice(0,4).map(b=>`<div class="item"><span><b>${esc(b.name)}</b><small>${b.ver} · ${ago(b.t)}</small></span>${sp(b.st,b.pct)}</div>`).join("")||'<div class="empty">Belum ada build.</div>';
+function renderAll(){
+ const n=s=>builds.filter(b=>b.st===s).length;
+ $("#sTot").textContent=builds.length;$("#sOk").textContent=n("ok");$("#sBad").textContent=n("bad");$("#sQ").textContent=n("run");
+ $("#recent").innerHTML=$("#recent2").innerHTML=list();
+ const q=$("#q").value.toLowerCase(),f=$("#fil").value;
+ const rows=builds.filter(b=>(!f||b.st===f)&&(!q||(b.name+b.pkg).toLowerCase().includes(q)));
+ $("#rows").innerHTML=rows.map(b=>`<div class="rw"><div><b>${esc(b.name)}</b><small class="mono">${esc(b.pkg)}</small></div><div class="mt">${b.ver} · ${b.type} · ${b.fmt.toUpperCase()} · ${ago(b.t)}</div><div class="ac">${sp(b.st,b.pct)}${b.st==="ok"?`<button class="btn mini" data-dl="${b.id}">Unduh</button>`:""}<button class="btn mini alt" data-rb="${b.id}">Ulangi</button><button class="btn mini alt" data-rm="${b.id}">Hapus</button></div></div>`).join("")||'<div class="empty">Tidak ada build yang cocok.</div>';
+ $$("[data-dl]").forEach(x=>x.onclick=()=>dl(builds.find(b=>String(b.id)===x.dataset.dl)));
+ const run=n("run")>0;$("#mSt").className="sp "+(!net?"bad":run?"run":"");$("#mTxt").textContent=!net?"Terputus":run?"Sedang membangun":CONFIG.apiBase?"Mesin siap":"Mode demo";
+}
+$("#q").oninput=$("#fil").onchange=renderAll;
+function seg(id,cb){$$("#"+id+" button").forEach(b=>b.onclick=()=>{$$("#"+id+" button").forEach(x=>x.classList.remove("on"));b.classList.add("on");cb(b.dataset.v)})}
+seg("typeSeg",v=>{type=v;$("#signCard").hidden=v!=="release"});seg("fmtSeg",v=>fmt=v);
+seg("srcSeg",v=>{src=v;$("#srcZip").hidden=v!=="zip";$("#srcGit").hidden=v!=="git"});
+$$("#arch .chip").forEach(c=>c.onclick=()=>c.classList.toggle("on"));
+$("#drop").onclick=()=>$("#zipIn").click();
+$("#drop").onkeydown=e=>{if(e.key==="Enter"||e.key===" ")$("#zipIn").click()};
+$("#zipIn").onchange=e=>{const f=e.target.files[0];if(f){$("#drop").innerHTML="<i>✓</i>"+esc(f.name)+" ("+(f.size/1048576).toFixed(1)+" MB)";$("#drop").classList.add("has")}};
+const drawSteps=(n,fail)=>$("#steps").innerHTML=STEPS.map((s,i)=>`<span class="st ${fail&&i===n?"fail":i<n?"done":i===n?"now":""}">${s}</span>`).join("");
+let prefs={},logBuf=[];
+const addLog=(t,c)=>{const l=$("#log"),s=(prefs.ts?new Date().toTimeString().slice(0,8)+"  ":"")+t;logBuf.push(s);l.insertAdjacentHTML("beforeend",`<div class="${c||""}">${esc(s)}</div>`);if(prefs.auto!==false)l.scrollTop=l.scrollHeight};
+drawSteps(-1);
+$("#startBtn").onclick=async()=>{
+ const name=$("#appName").value.trim(),pkg=$("#pkg").value.trim();
+ if(!name){toast("Isi nama aplikasi dulu");$("#appName").focus();return}
+ if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(pkg)){toast("ID paket harus seperti com.contoh.app");$("#pkg").focus();return}
+ if(src==="zip"&&!$("#zipIn").files.length){toast("Pilih berkas ZIP proyek");return}
+ if(src==="git"&&!$("#gitUrl").value.trim()){toast("Isi URL repositori");return}
+ if(type==="release"&&CONFIG.apiBase&&!$("#signCard input[type=file]").files[0]){toast("Pilih berkas keystore untuk build release");return}
+ let r;try{r=await API.startBuild({name,pkg,type,fmt,ver:$("#vName").value,vcode:+$("#vCode").value,framework:$("#framework").value,env:$("#env").value,git:src==="git"?{url:$("#gitUrl").value,branch:$("#gitBr").value,token:$("#gitTok").value}:null,keystore:type==="release"?{alias:$("#alias").value,password:$("#ksPw").value}:null,notify:{hook:$("#hook").value,mail:$("#mail").value},permissions:permList(),features:featList(),options:optList()},{zip:src==="zip"?$("#zipIn").files[0]:null,icon:$("input[accept='image/png']").files[0],keystore:type==="release"?$("#signCard input[type=file]").files[0]:null,gservices:$("#gsv").files[0]})}catch(e){toast(e.message||"Gagal menghubungi mesin build");return}
+ cur={id:r.id,name,pkg,ver:$("#vName").value,type,fmt,st:"run",t:Date.now()};builds.unshift(cur);renderAll();API.sync(cur);keepAwake(true);
+ $("#log").innerHTML="";logBuf.length=0;$("#dlBtn").hidden=true;$("#cancelBtn").hidden=false;$("#liveBar").style.width="0";$("#pb").classList.add("on");
+ $("#liveTitle").textContent="Membangun "+name;$("#startBtn").disabled=true;drawSteps(0);
+ $("#log").scrollIntoView({behavior:"smooth",block:"center"});
+ if(API.live(cur,onEvt))return;
+ let i=0;timer=setInterval(()=>{
+  if(i>=LOGS.length){finish("ok");return}
+  addLog(...LOGS[i]);i++;cur.pct=Math.round(i/LOGS.length*100);API.sync(cur);$("#liveBar").style.width=Math.round(i/LOGS.length*100)+"%";drawSteps(Math.min(Math.floor(i/LOGS.length*4),4));
+ },900);
+};
+function finish(st){
+ clearInterval(timer);cur.st=st;if(st==="ok")cur.pct=100;API.sync(cur);notifyDone(st);$("#startBtn").disabled=false;$("#cancelBtn").hidden=true;$("#pb").classList.remove("on");
+ if(st==="ok"){drawSteps(5);$("#liveBar").style.width="100%";$("#dlBtn").hidden=false;toast("Build selesai")}
+ else{addLog("Build dibatalkan","e");drawSteps(2,true);toast("Build dibatalkan")}
+ renderAll();
+}
+$("#cancelBtn").onclick=async()=>{try{await API.cancel(cur)}catch(e){}finish("bad")};
+$("#dlBtn").onclick=()=>dl(cur);
+setInterval(()=>{if(CONFIG.apiBase)return;const b=builds.some(x=>x.st==="run"),c=8+Math.round(Math.random()*(b?60:12)),r=26+Math.round(Math.random()*(b?30:6));
+ $("#cpuT").textContent=c+"%";$("#cpuB").style.width=c+"%";$("#ramT").textContent=r+"%";$("#ramB").style.width=r+"%"},2500);
+renderAll();
+</script>
+<script>
+(()=>{
+ builds=[];renderAll();
+ const setM=(k,v)=>{$("#"+k+"T").textContent=v+"%";$("#"+k+"B").style.width=v+"%"},conn=$("#conn");
+ if(CONFIG.apiBase){
+  conn.textContent="Server: "+CONFIG.apiBase;
+  const poll=async()=>{try{
+   builds=(await API.list()).map(b=>({...b}));
+   if(cur&&cur.st==="run"){const m=builds.find(b=>b.id===cur.id);if(m&&m.st!=="run")onEvt({type:"status",st:m.st})}
+   netState(true);renderAll();
+   const m=await API.machine();setM("cpu",m.cpu);setM("ram",m.ram);setM("dsk",m.disk);
+   $("#mInfo").textContent=`Android SDK ${m.sdk}, Gradle ${m.gradle}, JDK ${m.jdk}`;
+  }catch(e){netState(false)}};
+  poll();setInterval(poll,3000);
+ }else{
+  conn.textContent="Mode demo: belum ada mesin build tersambung";
+  $("#mInfo").textContent="Mode demo: angka mesin hanya contoh";
+  if(window.claude&&claude.use)claude.use("db").then(db=>{
+   if(!db)return;dbc=db.collection("builds");conn.textContent="Mode demo: antrean dibagikan langsung antarpengguna";
+   unsub=dbc.orderBy("t","desc").limit(50).onSnapshot(s=>{builds=s.docs.map(d=>{const b={...d.data()};if(b.st==="run"&&Date.now()-b.t>6e5&&!(cur&&b.id===cur.id))b.st="bad";return b});renderAll()},()=>{});
+  }).catch(()=>{});
+ }
+ setInterval(renderAll,30000);
+ const SK=["hook","mail","par","ret"];
+ try{const s=JSON.parse(localStorage.getItem("pf-set")||"{}");SK.forEach(k=>{if(s[k]!=null)$("#"+k).value=s[k]})}catch(e){}
+ $("#saveSet").onclick=()=>{try{localStorage.setItem("pf-set",JSON.stringify(Object.fromEntries(SK.map(k=>[k,$("#"+k).value]))));toast("Pengaturan disimpan di perangkat ini")}catch(e){toast("Penyimpanan peramban diblokir")}};
+})();
+</script>
+<script>
+const PM=[["Jaringan",[["INTERNET","Internet"],["ACCESS_NETWORK_STATE","Status jaringan"],["ACCESS_WIFI_STATE","Status Wi-Fi"],["NFC","NFC"]]],
+["Perangkat",[["CAMERA","Kamera",1],["RECORD_AUDIO","Mikrofon",1],["VIBRATE","Getar"],["WAKE_LOCK","Layar tetap menyala"],["FLASHLIGHT","Senter"],["USE_BIOMETRIC","Biometrik"],["BLUETOOTH_CONNECT","Bluetooth sambung",1],["BLUETOOTH_SCAN","Bluetooth pindai",1]]],
+["Lokasi",[["ACCESS_FINE_LOCATION","Lokasi akurat",1],["ACCESS_COARSE_LOCATION","Lokasi perkiraan",1],["ACCESS_BACKGROUND_LOCATION","Lokasi latar belakang",1]]],
+["Penyimpanan",[["READ_MEDIA_IMAGES","Baca foto",1],["READ_MEDIA_VIDEO","Baca video",1],["READ_MEDIA_AUDIO","Baca audio",1],["READ_EXTERNAL_STORAGE","Baca penyimpanan",1],["WRITE_EXTERNAL_STORAGE","Tulis penyimpanan",1]]],
+["Data pribadi",[["READ_CONTACTS","Kontak",1],["READ_CALENDAR","Kalender",1],["READ_PHONE_STATE","Status telepon",1],["CALL_PHONE","Panggilan telepon",1],["SEND_SMS","Kirim SMS",1],["ACTIVITY_RECOGNITION","Aktivitas fisik",1]]],
+["Sistem",[["POST_NOTIFICATIONS","Notifikasi",1],["RECEIVE_BOOT_COMPLETED","Jalan saat perangkat menyala"],["FOREGROUND_SERVICE","Layanan latar depan"],["SCHEDULE_EXACT_ALARM","Alarm tepat waktu"],["SYSTEM_ALERT_WINDOW","Tampil di atas aplikasi lain",1],["REQUEST_INSTALL_PACKAGES","Pasang paket",1]]]];
+const BASE=["INTERNET","ACCESS_NETWORK_STATE"],permSel=new Set(BASE);
+function permDraw(){$("#perms").innerHTML=PM.map(([g,l])=>`<div class="pg"><span class="tag">${g}</span><div class="chips">${l.map(([k,n,s])=>`<button type="button" class="chip${permSel.has(k)?" on":""}" data-pk="${k}">${n}${s?" !":""}</button>`).join("")}</div></div>`).join("");$("#pcnt").textContent="("+permSel.size+" dipilih)"}
+$("#perms").onclick=e=>{const b=e.target.closest("[data-pk]");if(!b)return;const k=b.dataset.pk;permSel.has(k)?permSel.delete(k):permSel.add(k);b.classList.toggle("on");$("#pcnt").textContent="("+permSel.size+" dipilih)"};
+$("#pBase").onclick=()=>{permSel.clear();BASE.forEach(k=>permSel.add(k));permDraw()};
+$("#pNone").onclick=()=>{permSel.clear();permDraw()};
+permDraw();
+const permList=()=>[...permSel].map(k=>"android.permission."+k);
+const featList=()=>({orientation:$("#ori").value,...Object.fromEntries($$("[data-feat]").map(e=>[e.dataset.feat,e.checked]))});
+const optList=()=>({...Object.fromEntries($$("[data-opt]").map(e=>[e.dataset.opt,e.checked])),abis:$$("#arch .chip.on").map(c=>c.textContent),minSdk:+$("#minSdk").value,targetSdk:+$("#tgtSdk").value,jdk:$("#jdk").value,gradle:$("#grd").value,timeoutMin:+$("#tmo").value,subdir:$("#sub").value,outputName:$("#outn").value,gradleArgs:$("#gargs").value});
+const DEF={wake:true,vib:true,snd:true,ntf:false,auto:true,ts:true,fs:"13"};
+try{Object.assign(prefs,DEF,JSON.parse(localStorage.getItem("pf-prefs")||"{}"))}catch(e){Object.assign(prefs,DEF)}
+async function askNotif(){try{return await Notification.requestPermission()}catch(e){return"denied"}}
+$$("[data-pref]").forEach(el=>{const k=el.dataset.pref,cb=el.type==="checkbox";cb?el.checked=!!prefs[k]:el.value=prefs[k];
+ el.onchange=async()=>{prefs[k]=cb?el.checked:el.value;
+  if(k==="ntf"&&el.checked&&await askNotif()!=="granted"){el.checked=false;prefs.ntf=false;toast("Izin notifikasi tidak diberikan")}
+  if(k==="fs")$("#log").style.fontSize=prefs.fs+"px";
+  try{localStorage.setItem("pf-prefs",JSON.stringify(prefs))}catch(e){}permRender()}});
+$("#log").style.fontSize=prefs.fs+"px";
+let wl=null;
+async function keepAwake(on){try{if(on&&prefs.wake&&"wakeLock"in navigator)wl=await navigator.wakeLock.request("screen");else if(wl){await wl.release();wl=null}}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&cur&&cur.st==="run")keepAwake(true)});
+function beep(ok,force){if(!prefs.snd&&!force)return;try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type="square";g.gain.value=.06;const f=ok?[660,880]:[300,220];o.frequency.setValueAtTime(f[0],c.currentTime);o.frequency.setValueAtTime(f[1],c.currentTime+.15);o.start();o.stop(c.currentTime+.32)}catch(e){}}
+function notifyDone(st){keepAwake(false);const ok=st==="ok";
+ if(prefs.vib&&navigator.vibrate)navigator.vibrate(ok?[180,80,180]:[400,120,400,120,400]);
+ beep(ok);
+ if(prefs.ntf&&"Notification"in window&&Notification.permission==="granted"&&document.visibilityState!=="visible")try{new Notification(ok?"Build selesai":"Build gagal",{body:cur?cur.name:""})}catch(e){}}
+$("#tVib").onclick=()=>navigator.vibrate?(navigator.vibrate([200,80,200]),toast("Getar diuji")):toast("Perangkat tidak mendukung getar");
+$("#tSnd").onclick=()=>beep(true,true);
+const PL={granted:["Diizinkan",""],denied:["Ditolak","bad"],prompt:["Belum ditanya","run"],default:["Belum ditanya","run"],na:["Tidak didukung","na"]};
+const PS=[["Notifikasi peramban",async()=>"Notification"in window?Notification.permission:"na","notif"],["Kamera",async()=>{try{return(await navigator.permissions.query({name:"camera"})).state}catch(e){return navigator.mediaDevices?"prompt":"na"}},"cam"],["Layar tetap menyala",async()=>"wakeLock"in navigator?"granted":"na"],["Getar",async()=>navigator.vibrate?"granted":"na"],["Papan klip",async()=>navigator.clipboard?"granted":"na"]];
+async function permRender(){const out=[];for(const[n,f,k]of PS){let s;try{s=await f()}catch(e){s="na"}const[l,c]=PL[s]||PL.na;out.push(`<div class="item"><span><b>${n}</b></span><span style="display:flex;gap:8px;align-items:center"><span class="sp ${c}"${c==="na"?' style="background:#fff"':""}>${l}</span>${k&&s!=="granted"&&s!=="na"?`<button class="btn mini" data-ask="${k}">Izinkan</button>`:""}</span></div>`)}}
+$("#permRows").innerHTML=out.join("")}
+$("#permRows").onclick=async e=>{const b=e.target.closest("[data-ask]");if(!b)return;try{if(b.dataset.ask==="notif")await Notification.requestPermission();else{const s=await navigator.mediaDevices.getUserMedia({video:true});s.getTracks().forEach(t=>t.stop())}}catch(err){toast("Izin tidak diberikan atau diblokir peramban")}permRender()};
+$("#permRe").onclick=permRender;permRender();
+let qs=null,qt=null;
+async function qrOpen(){const v=$("#qv"),m=$("#qm");$("#qr").hidden=false;m.textContent="Meminta izin kamera…";
+ try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("Peramban ini tidak mendukung kamera");
+  qs=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});v.srcObject=qs;await v.play();
+  if(!("BarcodeDetector"in window)){m.textContent="Kamera aktif, tetapi peramban ini belum bisa membaca QR. Ketik URL secara manual.";return}
+  const d=new BarcodeDetector({formats:["qr_code"]});m.textContent="Arahkan kamera ke kode QR";
+  qt=setInterval(async()=>{try{const r=await d.detect(v);if(r[0]){$("#gitUrl").value=r[0].rawValue;qrClose();toast("URL terisi dari QR")}}catch(e){}},400);
+ }catch(e){m.textContent=e.name==="NotAllowedError"?"Izin kamera ditolak. Aktifkan lewat pengaturan situs di peramban.":(e.message||"Kamera tidak tersedia")}}
+function qrClose(){clearInterval(qt);qs&&qs.getTracks().forEach(t=>t.stop());qs=null;$("#qr").hidden=true}
+$("#qrBtn").onclick=qrOpen;$("#qx").onclick=qrClose;
+async function saveFile(name,data,type){try{const d=await claude.use("downloads");if(d){await d.save({filename:name,data});return}}catch(e){}
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:type||"text/plain"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1e3)}
+$("#lcopy").onclick=async()=>{try{await navigator.clipboard.writeText(logBuf.join("\n"));toast("Log disalin")}catch(e){toast("Peramban menolak akses papan klip")}};
+$("#lsave").onclick=()=>logBuf.length?saveFile((cur?cur.name:"build")+"-log.txt",logBuf.join("\n")):toast("Log masih kosong");
+$("#lclear").onclick=()=>{logBuf.length=0;$("#log").innerHTML=""};
+$("#exp").onclick=()=>{if(!builds.length){toast("Belum ada riwayat");return}const q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[["Nama","ID paket","Versi","Jenis","Format","Status","Waktu"],...builds.map(b=>[b.name,b.pkg,b.ver,b.type,b.fmt,LB[b.st],new Date(b.t).toISOString()])];saveFile("riwayat-build.csv",rows.map(r=>r.map(q).join(",")).join("\n"),"text/csv")};
+let arm=0;$("#clr").onclick=()=>{if(!arm){arm=1;toast("Tekan sekali lagi untuk menghapus semua");setTimeout(()=>arm=0,3000);return}arm=0;builds.forEach(b=>dbc&&dbc.doc(String(b.id)).delete().catch(()=>{}));builds=[];renderAll()};
+document.addEventListener("click",e=>{const x=e.target.closest("[data-rb],[data-rm]");if(!x)return;
+ if(x.dataset.rb){const b=builds.find(b=>String(b.id)===x.dataset.rb);if(!b)return;$("#appName").value=b.name;$("#pkg").value=b.pkg;$("#vName").value=b.ver;go("baru");toast("Data disalin. Pilih sumber kode lalu jalankan build")}
+ else{const id=x.dataset.rm;builds=builds.filter(b=>String(b.id)!==id);if(dbc)dbc.doc(id).delete().catch(()=>{});renderAll()}});
+addEventListener("offline",()=>toast("Perangkat sedang offline"));addEventListener("online",()=>toast("Kembali online"));
+</script>
+<script src="patch.js"></script>
+</body>
+</html>
