@@ -1,6 +1,5 @@
 // language: JavaScript (ES2022), file: patch.js
-// GitHub-only build engine. Works from file://, Netlify, GH Pages.
-// Requires PAT with contents:write + actions:write on the runner repo.
+// GitHub-only build engine. Fixed: standalone DOM reading, no silent failures.
 (function () {
   'use strict';
 
@@ -97,14 +96,14 @@
       const o = d.querySelector('#ghOwner').value.trim();
       const r = d.querySelector('#ghRepo').value.trim();
       const p = d.querySelector('#ghPat').value.trim();
-      if (!o || !r || !p) { toast('Isi ketiganya'); return; }
+      if (!o || !r || !p) { if (typeof toast === 'function') toast('Isi ketiganya'); else alert('Isi ketiganya'); return; }
       CREDS = { owner: o, repo: r, pat: p };
       stor.set('gh_owner', o);
       stor.set('gh_repo', r);
       stor.set('gh_pat', p);
       d.hidden = true;
       updateConn();
-      renderAll();
+      if (typeof renderAll === 'function') renderAll();
       pollOnce();
     };
     d.querySelector('#ghCancel').onclick = () => { d.hidden = true; };
@@ -368,11 +367,11 @@
     if (e.type === 'step') drawSteps(Math.max(0, Math.min(4, Number(e.n) || 0)));
     if (e.type === 'progress') {
       const p = Math.max(0, Math.min(100, Number(e.pct) || 0));
-      if (cur) cur.pct = p;
+      if (typeof cur !== 'undefined' && cur) cur.pct = p;
       const bar = qs('#liveBar'); if (bar) bar.style.width = p + '%';
     }
     if (e.type === 'status') {
-      if (!cur) return;
+      if (typeof cur === 'undefined' || !cur) return;
       cur.st = e.st;
       cur.pct = e.st === 'ok' ? 100 : (cur.pct || 0);
       if (typeof notifyDone === 'function') notifyDone(e.st);
@@ -383,18 +382,18 @@
         drawSteps(5);
         const bar = qs('#liveBar'); if (bar) bar.style.width = '100%';
         const dlb = qs('#dlBtn'); if (dlb) dlb.hidden = false;
-        toast('Build selesai');
+        if (typeof toast === 'function') toast('Build selesai');
       } else {
         drawSteps(2, true);
-        toast('Build gagal atau dibatalkan');
+        if (typeof toast === 'function') toast('Build gagal atau dibatalkan');
       }
       if (cur._es) { try { cur._es.close(); } catch (_) {} cur._es = null; }
-      renderAll();
+      if (typeof renderAll === 'function') renderAll();
     }
   };
 
   renderAll = function () {
-    const arr = Array.isArray(builds) ? builds : [];
+    const arr = typeof builds !== 'undefined' && Array.isArray(builds) ? builds : [];
     const n = (s) => arr.filter(b => b.st === s).length;
     const set = (id, v) => { const el = qs(id); if (el) el.textContent = v; };
     set('#sTot', arr.length); set('#sOk', n('ok')); set('#sBad', n('bad')); set('#sQ', n('run'));
@@ -437,7 +436,7 @@
 
   dl = function (b) {
     const u = b && API.artifact(b);
-    if (!u) { toast('Artifact belum tersedia'); return; }
+    if (!u) { if (typeof toast === 'function') toast('Artifact belum tersedia'); return; }
     const a = document.createElement('a');
     a.href = u;
     a.download = '';
@@ -449,45 +448,76 @@
 
   const startBtn = qs('#startBtn');
   if (startBtn) startBtn.onclick = async () => {
-    if (!CREDS.pat) { ensureCredsModal(); return; }
-    const name = qs('#appName').value.trim();
-    const pkg = qs('#pkg').value.trim();
-    if (!name) { toast('Isi nama aplikasi dulu'); qs('#appName').focus(); return; }
-    if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(pkg)) {
-      toast('ID paket harus seperti com.contoh.app'); qs('#pkg').focus(); return;
-    }
-    if (src === 'zip' && !qs('#zipIn').files.length) { toast('Pilih berkas ZIP proyek'); return; }
-    if (src === 'git' && !qs('#gitUrl').value.trim()) { toast('Isi URL repositori'); return; }
-    const vc = Number(qs('#vCode').value);
-    if (!Number.isInteger(vc) || vc < 1) { toast('Kode versi harus bilangan bulat ≥ 1'); return; }
-    if (!qsa('#arch .chip.on').length) { toast('Pilih minimal satu arsitektur'); return; }
-    const ks = qs('#ksIn') || qsa('#signCard input[type=file]')[0];
-    if (type === 'release' && (!ks || !ks.files[0])) { toast('Pilih berkas keystore untuk build release'); return; }
+    const showToast = (m) => {
+      if (typeof toast === 'function') toast(m);
+      else alert(m);
+    };
 
-    const opts = optList();
-    opts.timeoutMin = Math.max(1, Math.min(120, +qs('#tmo').value || 120));
-    opts.retentionDays = Math.max(1, Math.min(30, +(qs('#ret')?.value) || 7));
-    opts.gradle = (qs('#grd')?.value) || '8.7';
-    opts.jdk = (qs('#jdk')?.value) || '17';
+    if (!CREDS.pat) { ensureCredsModal(); return; }
+    
+    const name = qs('#appName')?.value.trim();
+    const pkg = qs('#pkg')?.value.trim();
+    
+    if (!name) { showToast('Isi nama aplikasi dulu'); qs('#appName')?.focus(); return; }
+    if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(pkg || '')) {
+      showToast('ID paket harus seperti com.contoh.app'); qs('#pkg')?.focus(); return;
+    }
+    
+    const srcEl = qs('#srcSeg button.on');
+    const src = srcEl ? srcEl.dataset.v : 'zip';
+    if (src === 'zip' && !(qs('#zipIn')?.files?.length)) { showToast('Pilih berkas ZIP proyek'); return; }
+    if (src === 'git' && !qs('#gitUrl')?.value.trim()) { showToast('Isi URL repositori'); return; }
+    
+    const vc = Number(qs('#vCode')?.value);
+    if (!Number.isInteger(vc) || vc < 1) { showToast('Kode versi harus bilangan bulat ≥ 1'); return; }
+    
+    if (!qsa('#arch .chip.on').length) { showToast('Pilih minimal satu arsitektur'); return; }
+    
+    const typeEl = qs('#typeSeg button.on');
+    const type = typeEl ? typeEl.dataset.v : 'debug';
+    const fmtEl = qs('#fmtSeg button.on');
+    const fmt = fmtEl ? fmtEl.dataset.v : 'apk';
+    
+    const ks = qs('#ksIn') || qsa('#signCard input[type=file]')[0];
+    if (type === 'release' && (!ks || !ks.files[0])) { showToast('Pilih berkas keystore untuk build release'); return; }
+
+    const opts = {
+      ...Object.fromEntries(qsa("[data-opt]").map(e => [e.dataset.opt, e.checked])),
+      abis: qsa("#arch .chip.on").map(c => c.textContent),
+      minSdk: +(qs("#minSdk")?.value) || 24,
+      targetSdk: +(qs("#tgtSdk")?.value) || 34,
+      jdk: (qs("#jdk")?.value) || '17',
+      gradle: (qs("#grd")?.value) || '8.7',
+      timeoutMin: +(qs("#tmo")?.value) || 120,
+      subdir: (qs("#sub")?.value) || '',
+      outputName: (qs("#outn")?.value) || '',
+      gradleArgs: (qs("#gargs")?.value) || ''
+    };
+
+    const permissions = [...document.querySelectorAll('#perms [data-pk].on')].map(el => 'android.permission.' + el.dataset.pk);
+    const features = {
+      orientation: qs('#ori')?.value || 'auto',
+      ...Object.fromEntries(qsa('[data-feat]').map(e => [e.dataset.feat, e.checked]))
+    };
 
     startBtn.disabled = true;
     let r;
     try {
       r = await API.startBuild({
         name, pkg, type, fmt,
-        ver: qs('#vName').value || '1.0.0',
+        ver: qs('#vName')?.value || '1.0.0',
         vcode: vc,
-        framework: qs('#framework').value,
-        env: qs('#env').value,
+        framework: qs('#framework')?.value || 'Android native (Gradle)',
+        env: qs('#env')?.value || '',
         git: src === 'git' ? {
           url: qs('#gitUrl').value, branch: qs('#gitBr').value, token: qs('#gitTok').value,
         } : null,
         keystore: type === 'release' ? {
-          alias: qs('#alias').value,
-          password: qs('#ksPw').value,
+          alias: qs('#alias')?.value || '',
+          password: qs('#ksPw')?.value || '',
         } : null,
-        permissions: permList(),
-        features: featList(),
+        permissions,
+        features,
         options: opts,
       }, {
         zip: src === 'zip' ? qs('#zipIn').files[0] : null,
@@ -496,26 +526,35 @@
         gservices: qs('#gsv')?.files?.[0] || null,
       });
     } catch (e) {
-      toast(e.message || 'Gagal mulai build');
+      showToast(e.message || 'Gagal mulai build');
       startBtn.disabled = false;
       return;
     }
 
-    cur = { id: r.id, name, pkg, ver: qs('#vName').value, type, fmt, st: 'run', t: Date.now(), pct: 0 };
-    builds.unshift(cur);
-    renderAll();
+    if (typeof cur !== 'undefined') {
+      cur = { id: r.id, name, pkg, ver: qs('#vName')?.value, type, fmt, st: 'run', t: Date.now(), pct: 0 };
+    }
+    if (typeof builds !== 'undefined') {
+      builds.unshift(cur);
+    }
+    if (typeof renderAll === 'function') renderAll();
+    
     if (typeof keepAwake === 'function') keepAwake(true);
 
     const logEl = qs('#log'); if (logEl) logEl.innerHTML = '';
-    logBuf.length = 0;
+    if (typeof logBuf !== 'undefined' && Array.isArray(logBuf)) logBuf.length = 0;
+    
     const dlb = qs('#dlBtn'); if (dlb) dlb.hidden = true;
     const cb = qs('#cancelBtn'); if (cb) cb.hidden = false;
     const bar = qs('#liveBar'); if (bar) bar.style.width = '0';
     const pb = qs('#pb'); if (pb) pb.classList.add('on');
     const lt = qs('#liveTitle'); if (lt) lt.textContent = 'Membangun ' + name;
-    drawSteps(0);
-    addLog(`[gh] upload ke release work-${r.id}`, 'o');
-    addLog(`[gh] build_id=${r.id}`, 'm');
+    
+    if (typeof drawSteps === 'function') drawSteps(0);
+    if (typeof addLog === 'function') {
+      addLog(`[gh] upload ke release work-${r.id}`, 'o');
+      addLog(`[gh] build_id=${r.id}`, 'm');
+    }
     if (logEl) logEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     if (API.live(cur, onEvt)) return;
@@ -527,18 +566,18 @@
     if (rm) {
       e.preventDefault(); e.stopPropagation();
       try { await API.remove(rm.dataset.rm); } catch (_) {}
-      builds = builds.filter(b => String(b.id) !== rm.dataset.rm);
-      renderAll();
+      if (typeof builds !== 'undefined') builds = builds.filter(b => String(b.id) !== rm.dataset.rm);
+      if (typeof renderAll === 'function') renderAll();
       return;
     }
     const clr = e.target.closest('#clr');
     if (clr) {
       const armed = clr.dataset.armed === '1';
-      if (!armed) { clr.dataset.armed = '1'; toast('Tekan sekali lagi untuk hapus semua'); setTimeout(() => delete clr.dataset.armed, 3000); return; }
+      if (!armed) { clr.dataset.armed = '1'; if (typeof toast === 'function') toast('Tekan sekali lagi untuk hapus semua'); setTimeout(() => delete clr.dataset.armed, 3000); return; }
       delete clr.dataset.armed;
       try { await API.removeAll(); } catch (_) {}
-      builds = [];
-      renderAll();
+      if (typeof builds !== 'undefined') builds = [];
+      if (typeof renderAll === 'function') renderAll();
     }
   }, true);
 
@@ -546,12 +585,14 @@
     if (!CREDS.pat || !CREDS.owner) return;
     try {
       const arr = await API.list();
-      builds = arr;
-      if (cur && cur.st === 'run') {
-        const m = builds.find(b => String(b.id) === String(cur.id));
-        if (m && m.st !== 'run') onEvt({ type: 'status', st: m.st });
+      if (typeof builds !== 'undefined') {
+        builds = arr;
+        if (typeof cur !== 'undefined' && cur && cur.st === 'run') {
+          const m = builds.find(b => String(b.id) === String(cur.id));
+          if (m && m.st !== 'run' && typeof onEvt === 'function') onEvt({ type: 'status', st: m.st });
+        }
       }
-      renderAll();
+      if (typeof renderAll === 'function') renderAll();
     } catch (e) {
       const mt = qs('#mTxt'); if (mt) mt.textContent = `GitHub: ${e.message}`;
     }
@@ -597,8 +638,8 @@
     if (l && l.childElementCount > 4000) {
       while (l.childElementCount > 3000) l.firstElementChild.remove();
     }
-    if (Array.isArray(logBuf) && logBuf.length > 6000) logBuf.splice(0, logBuf.length - 6000);
+    if (typeof logBuf !== 'undefined' && Array.isArray(logBuf) && logBuf.length > 6000) logBuf.splice(0, logBuf.length - 6000);
   }, 5000);
 
-  renderAll();
+  if (typeof renderAll === 'function') renderAll();
 })();
